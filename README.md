@@ -13,6 +13,10 @@ Math games for young children, drawn like chalk on a playground.
 - On an iPad or iPhone, open the address in Safari, tap Share, then Add to Home Screen. Played from that icon, it keeps working without internet after the first open.
 - To set up players from a link, add `#kids=Name.grade` to the address, with commas between players. Grades: `-3` to `-1` for the years before Kindergarten, `0` for Kindergarten, `1` and up for school grades. Example: `#kids=Sam.1,Ali.0`.
 
+## Updating
+
+The live site is at https://saadwarraich.github.io/Saad-Warraich/ and is served from the `gh-pages` branch. Push every change to both `gh-pages` and `main` so the two stay the same. A device picks up the new version the next time the game is opened with internet.
+
 ## Files
 
 - `index.html`: the whole game
