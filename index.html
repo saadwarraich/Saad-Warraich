@@ -240,6 +240,33 @@ button:disabled{cursor:default}
 .btnrow{display:flex;flex-wrap:wrap;gap:10px}
 .field select{background:var(--blacktop);border:2px solid var(--seam);border-radius:12px;padding:11px 12px;font:inherit;font-weight:400;color:inherit}
 
+/* the weekly task: boxes to fill, and the gift at the end of them */
+.wkcard{display:flex;flex-direction:column;gap:10px;padding:14px 16px;border:3px dashed var(--seam);border-radius:18px 22px 16px 24px/22px 16px 24px 18px}
+.wkcard h2{font-size:24px}
+.wkrow{display:flex;align-items:center;gap:10px}
+.wkboxes{display:flex;flex:none}
+.wkb{width:min(38px,9.2vw);height:min(38px,9.2vw);border:3px solid var(--chalk);margin-left:-3px;display:grid;place-items:center}
+.wkb:first-child{margin-left:0}
+.wkb svg{width:64%;height:64%}
+.wkb.done{background:var(--sun);color:var(--ink)}
+.wkboxes.many .wkb{width:min(34px,7.4vw);height:min(34px,7.4vw)}
+.wkdash{flex:1;min-width:8px;border-top:3px dashed var(--seam)}
+.gift{appearance:none;flex:none;width:58px;height:58px;padding:0;border:0;background:transparent;color:var(--dim);display:grid;place-items:center}
+.gift svg{width:54px;height:54px;display:block}
+.gift.ready{animation:pulse .9s ease-in-out infinite}
+.gift.nope{animation:shake .35s}
+.wkNote{font-size:16px;line-height:1.35;color:var(--dim)}
+.wkNote b{color:var(--chalk);display:block}
+.giftbig{appearance:none;flex:none;width:min(60vw,240px);aspect-ratio:1;padding:0;border:0;background:transparent;animation:pulse .9s ease-in-out infinite}
+.giftbig svg,.treat svg{width:100%;height:100%;display:block}
+.treat{flex:none;width:min(64vw,260px);aspect-ratio:1;animation:starpop .5s both}
+.treatName{font-family:var(--display);font-size:54px;line-height:1;color:var(--sun)}
+.owehead{font-weight:700}
+.owe{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;background:var(--slab);border-radius:14px;padding:10px 14px}
+.owe span{flex:1;min-width:11em}
+.owe .plain{padding:9px 14px}
+.owe.given span{color:var(--dim)}
+
 @keyframes pop{0%{transform:scale(.2)}70%{transform:scale(1.2)}100%{transform:scale(1)}}
 @keyframes starpop{0%{transform:scale(0);opacity:0}70%{transform:scale(1.2);opacity:1}100%{transform:scale(1);opacity:1}}
 @keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
@@ -298,6 +325,18 @@ button:disabled{cursor:default}
   .lvtxt small{font-size:16px}
   .wd{font-size:16px}
   .trio dt{font-size:15.5px}
+  .wkcard{padding:18px 22px}
+  .wkcard h2{font-size:30px}
+  .wkb{width:50px;height:50px}
+  .wkboxes.many .wkb{width:46px;height:46px}
+  .gift{width:76px;height:76px}
+  .gift svg{width:70px;height:70px}
+  .wkNote{font-size:19px}
+  .giftbig{width:300px}
+  .treat{width:330px}
+  .treatName{font-size:70px}
+  .owe,.owehead{font-size:18px}
+  .doneBtns .plain{font-size:20px;padding:15px 18px}
 }
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
 </style>
@@ -345,6 +384,16 @@ button:disabled{cursor:default}
       </button>
     </div>
 
+    <div class="wkcard" id="wkcard">
+      <h2>This week's surprise</h2>
+      <div class="wkrow">
+        <div class="wkboxes" id="wkBoxes" role="img"></div>
+        <span class="wkdash" aria-hidden="true"></span>
+        <button id="giftBtn" class="gift" type="button"></button>
+      </div>
+      <p class="wkNote" id="wkNote"></p>
+    </div>
+
     <div class="labelrow">
       <h2>Or pick a game</h2>
       <button id="momTop" class="link" type="button">For Mom</button>
@@ -377,9 +426,22 @@ button:disabled{cursor:default}
     <p id="doneLine" class="doneLine"></p>
     <p id="doneLevel" class="doneLevel" hidden></p>
     <p id="doneToday" class="doneToday"></p>
+    <p id="doneWeek" class="doneLevel" hidden></p>
     <div class="doneBtns">
+      <button id="giftGo" class="big" type="button" hidden>Open your surprise</button>
       <button id="againBtn" class="big" type="button">Play again</button>
       <button id="homeBtn" class="plain" type="button">Pick another game</button>
+    </div>
+  </section>
+
+  <section id="gift" class="screen fin" hidden>
+    <h2 id="giftTitle">You filled every box!</h2>
+    <button id="giftBox" class="giftbig" type="button" aria-label="Open the surprise"></button>
+    <div id="giftTreat" class="treat" role="img" hidden></div>
+    <p id="giftName" class="treatName" hidden></p>
+    <p id="giftLine" class="doneLine"></p>
+    <div class="doneBtns">
+      <button id="giftHome" class="big" type="button">Back to the games</button>
     </div>
   </section>
 
@@ -464,6 +526,23 @@ const workName = s => (s <= -3 ? 'age 2 games' : s === -2 ? 'age 3 games' : grad
 const schoolYearOf = (y, m) => (m >= 9 ? y : y - 1); // a school year starts in September
 const schoolYear = () => { const d = new Date(); return schoolYearOf(d.getFullYear(), d.getMonth() + 1); };
 const GOAL = 3; // rounds a day, about 10 minutes
+// The weekly task: a box fills on each day the day's rounds are done. Enough boxes between Monday and Sunday open a surprise.
+const TREATS = ['pizza', 'burger', 'bbq'];
+const TREAT_NAME = {pizza:'Pizza', burger:'Burger', bbq:'Bar-B-Q'};
+const TREAT_SAY = {pizza:'pizza', burger:'a burger', bbq:'barbecue'};
+const WEEK_FROM = '2026-11-19'; // the day the weekly task was added
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const isDay = k => typeof k === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(k);
+const keyOfNum = n => { const d = new Date(n * 864e5); return d.getUTCFullYear() + '-' + pad(d.getUTCMonth() + 1) + '-' + pad(d.getUTCDate()); };
+const mondayOf = k => { const n = dayNum(k); return n - ((n + 3) % 7); }; // the day number of that week's Monday
+const dayLabel = k => MONTHS[+k.slice(5, 7) - 1] + ' ' + (+k.slice(8, 10));
+// The app's own pick for a week. It looks random, is the same on every device, and never repeats the week before.
+const autoMemo = {};
+function autoTreat(mon){
+  const w = Math.round((mon + 3) / 7);
+  if (autoMemo[w] == null){ let t = 0; for (let i = 1; i <= w; i++) t = (t + 1 + ((Math.imul(i, 2654435761) >>> 15) & 1)) % 3; autoMemo[w] = t; }
+  return TREATS[autoMemo[w]];
+}
 const C = {sun:'#ffd65a', sky:'#7ecbff', rose:'#ff93b2', mint:'#8ee9b8', chalk:'#f4f0e6', ink:'#1b1e21'};
 const TINTS = [C.sun, C.sky, C.rose, C.mint];
 const STAR = (() => { let d = ''; for (let i = 0; i < 10; i++){ const r = i % 2 ? 5.2 : 12, a = -Math.PI / 2 + i * Math.PI / 5; d += (i ? 'L' : 'M') + (r * Math.cos(a)).toFixed(2) + ' ' + (r * Math.sin(a)).toFixed(2); } return d + 'Z'; })();
@@ -495,6 +574,34 @@ function icon(kind, col){
 }
 function dotFace(){
   return '<circle r="11" fill="' + C.sun + '"/><circle cx="-3.8" cy="-2.4" r="1.6" fill="' + C.ink + '"/><circle cx="3.8" cy="-2.4" r="1.6" fill="' + C.ink + '"/><path d="M-4.2 2.8q4.2 4.4 8.4 0" stroke="' + C.ink + '" stroke-width="1.7" fill="none" stroke-linecap="round"/>';
+}
+// The gift at the end of the week's boxes, and the three surprises inside it.
+function giftPic(on){
+  const a = on ? ' fill="' + C.rose + '"' : ' fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"';
+  const b = on ? ' fill="' + C.sun + '"' : ' fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"';
+  return '<svg viewBox="0 0 60 60" aria-hidden="true"><rect x="11" y="29" width="38" height="24" rx="2.5"' + a + '/><rect x="7" y="17" width="46" height="11" rx="2.5"' + a + '/>' +
+    '<rect x="26" y="17" width="8" height="36"' + b + '/><path d="M30 17C24 4 9 6 13 13.5c2 4 10 4.5 17 3.5z"' + b + '/><path d="M30 17c6-13 21-11 17-3.5-2 4-10 4.5-17 3.5z"' + b + '/></svg>';
+}
+function treatPic(t){
+  const TAN = '#e2b56d', BROWN = '#a06d4c';
+  let s;
+  if (t === 'pizza'){
+    s = '<path d="M-36-22Q0-44 36-22L2 42Q0 45-2 42Z" fill="' + C.sun + '"/><path d="M-37-21Q0-45 37-21" fill="none" stroke="' + TAN + '" stroke-width="10" stroke-linecap="round"/>' +
+      '<circle cx="-12" cy="-7" r="7" fill="' + C.rose + '"/><circle cx="11" cy="-3" r="7" fill="' + C.rose + '"/><circle cx="-1" cy="16" r="6" fill="' + C.rose + '"/>' +
+      '<circle cx="1" cy="-14" r="2.4" fill="' + C.mint + '"/><circle cx="-9" cy="7" r="2.2" fill="' + C.mint + '"/><circle cx="9" cy="11" r="2.2" fill="' + C.mint + '"/>';
+  } else if (t === 'burger'){
+    s = '<path d="M-34-8Q-34-38 0-38Q34-38 34-8Z" fill="' + TAN + '"/>' +
+      [[-15, -25], [1, -30], [16, -23], [-2, -17]].map(q => '<ellipse cx="' + q[0] + '" cy="' + q[1] + '" rx="3" ry="1.8" fill="' + C.chalk + '"/>').join('') +
+      '<path d="M-38-6q6.3 9 12.7 0t12.7 0 12.6 0 12.7 0 12.7 0 12.6 0v6h-76z" fill="' + C.mint + '"/>' +
+      '<rect x="-35" y="5" width="70" height="14" rx="7" fill="' + BROWN + '"/>' +
+      '<path d="M-36 1h72v5h-18l-9 9-9-9h-36z" fill="' + C.sun + '"/>' +
+      '<path d="M-34 23h68v5q0 11-11 11h-46q-11 0-11-11z" fill="' + TAN + '"/>';
+  } else {
+    const stick = (dx, dy, cols) => '<g transform="translate(' + dx + ' ' + dy + ') rotate(-32)"><path d="M-46 0H46" stroke="' + C.chalk + '" stroke-width="3" stroke-linecap="round"/><circle cx="-46" r="4.5" fill="none" stroke="' + C.chalk + '" stroke-width="2.6"/>' +
+      cols.map((c, i) => '<rect x="' + (-30 + i * 17) + '" y="-8.5" width="14" height="17" rx="4" fill="' + c + '"/>').join('') + '</g>';
+    s = stick(-4, -13, [BROWN, C.mint, BROWN, C.rose]) + stick(4, 15, [C.sun, BROWN, C.mint, BROWN]);
+  }
+  return '<svg viewBox="-50 -50 100 100" aria-hidden="true"><g filter="url(#dust)">' + s + '</g></svg>';
 }
 // Picture buttons for the little games.
 function card(inner){ return '<svg viewBox="0 0 100 100" aria-hidden="true"><g filter="url(#dust)">' + inner + '</g></svg>'; }
@@ -1000,13 +1107,13 @@ let dbDoc = null, pushing = false, cloud = 'wait', localOK = true, gen0 = 0, las
 // grade: the child's school year (0 Kindergarten, 1 Grade 1, -3 age 2) as of the school year that began in gy.
 function newPlayer(id, name, kind, grade, gy){
   const g = {}; Object.keys(BYID).forEach(k => { g[k] = {level:1, rounds:0, q:0, first:0, h:'', run:0, weak:0}; });
-  return {id, name, kind:kind === 'little' || kind === 'big' ? kind : 'auto', grade:Number.isFinite(grade) ? clamp(Math.round(grade), -3, 8) : 0, gy:Number.isFinite(gy) ? gy : schoolYear(), stars:0, games:g, facts:{}, days:{}};
+  return {id, name, kind:kind === 'little' || kind === 'big' ? kind : 'auto', grade:Number.isFinite(grade) ? clamp(Math.round(grade), -3, 8) : 0, gy:Number.isFinite(gy) ? gy : schoolYear(), stars:0, games:g, facts:{}, days:{}, wk:{n:5, b:'', wins:[]}};
 }
 // Three players to start with: Grade 1, Kindergarten and age 2, as of fall 2026.
 // This copy sits at a public address, so it names nobody: a personal link (#kids=Name.grade,...) fills the names in.
 const FIRST = {p1:['Player 1', 1], p2:['Player 2', 0], p3:['Little one', -3]};
 const STAND_IN = {};
-function fresh(){ return {v:2, players:Object.keys(FIRST).map(id => newPlayer(id, FIRST[id][0], 'auto', FIRST[id][1], 2026)), updatedAt:0}; }
+function fresh(){ return {v:2, players:Object.keys(FIRST).map(id => newPlayer(id, FIRST[id][0], 'auto', FIRST[id][1], 2026)), picks:{}, updatedAt:0}; }
 state = fresh();
 function me(){ return state.players.find(p => p.id === prefs.player) || state.players[0]; }
 function byId(id){ return state.players.find(p => p.id === id) || null; }
@@ -1015,10 +1122,30 @@ function stageIn(P, sy){ return clamp(P.grade + (sy - P.gy), -3, 8); }
 function stageOf(P){ return stageIn(P, schoolYear()); }
 function littleDone(P){ return LITTLE.filter(G => P.games[G.id].level >= 3 && P.games[G.id].q >= 8).length >= 4; }
 // Little-kid games until Kindergarten, or from Pre-K once the little games are mastered. Mom can also fix it either way.
-function kindOf(P){
+function kindAt(P, sy){
   if (P.kind === 'little' || P.kind === 'big') return P.kind;
-  const s = stageOf(P);
+  const s = stageIn(P, sy);
   return s >= 0 || (s === -1 && littleDone(P)) ? 'big' : 'little';
+}
+function kindOf(P){ return kindAt(P, schoolYear()); }
+// Rounds that fill a day's box: the daily three for big kids, one for the little ones.
+const needOn = (P, k) => (kindAt(P, schoolYearOf(+k.slice(0, 4), +k.slice(5, 7))) === 'little' ? 1 : GOAL);
+// Boxes to fill in the week that starts on day number mon. A child's first week is shorter when it starts midweek.
+function targetFor(P, mon, todayN){
+  const n = P.wk.n, b = Math.max(dayNum(WEEK_FROM), P.wk.b ? dayNum(P.wk.b) : todayN);
+  if (b < mon || b > mon + 6) return n;
+  const left = mon + 7 - b;
+  return clamp(Math.round(n * left / 7), 1, left);
+}
+function boxesIn(P, mon, need){ let c = 0; for (let i = 0; i < 7; i++){ const v = P.days[keyOfNum(mon + i)]; if (v && v.r >= need) c++; } return c; }
+const winOf = (P, mon) => P.wk.wins.find(w => w.k === keyOfNum(mon)) || null;
+const treatFor = (st, mon) => st.picks[keyOfNum(mon)] || autoTreat(mon);
+// The surprise is written down the moment the week's boxes are full, so it cannot change afterwards.
+function checkWin(st, P, k){
+  const mon = mondayOf(k);
+  if (winOf(P, mon) || boxesIn(P, mon, needOn(P, k)) < targetFor(P, mon, dayNum(k))) return;
+  P.wk.wins.push({k:keyOfNum(mon), t:treatFor(st, mon), g:0, o:0});
+  if (P.wk.wins.length > 12) P.wk.wins = P.wk.wins.slice(-12);
 }
 function gamesOf(P){ return kindOf(P) === 'little' ? LITTLE : BIG; }
 
@@ -1080,11 +1207,20 @@ function normPlayer(a, i){
   };
   each(a.facts, (k, F) => { if (!parseFact(k)) return; const n = num(F.s, 1); P.facts[k] = {s:n, m:Math.min(num(F.m), n), l:F.l ? 1 : 0, d:num(F.d)}; });
   each(a.days, (k, D) => { if (!/^\d{4}-\d{2}-\d{2}$/.test(k)) return; const n = num(D.q); P.days[k] = {r:num(D.r), q:n, f:Math.min(num(D.f), n), s:num(D.s)}; });
+  const w = a.wk && typeof a.wk === 'object' ? a.wk : {};
+  P.wk.n = w.n == null ? 5 : num(w.n, 3, 7);
+  P.wk.b = isDay(w.b) ? w.b : '';
+  (Array.isArray(w.wins) ? w.wins : []).slice(-12).forEach(x => {
+    if (x && typeof x === 'object' && isDay(x.k) && TREATS.includes(x.t) && !P.wk.wins.some(y => y.k === x.k)) P.wk.wins.push({k:x.k, t:x.t, g:x.g ? 1 : 0, o:x.o ? 1 : 0});
+  });
   return P;
 }
 function normalize(s){
   if (!s || typeof s !== 'object') return fresh();
-  const st = {v:2, players:[], updatedAt:num(s.updatedAt, 0, 9e15)};
+  const st = {v:2, players:[], picks:{}, updatedAt:num(s.updatedAt, 0, 9e15)};
+  // Mom's own choice of surprise for a week, saved as rows.
+  const pk = s.picks;
+  (Array.isArray(pk) ? pk : pk && typeof pk === 'object' ? Object.keys(pk).map(k => ({k, t:pk[k]})) : []).slice(-8).forEach(x => { if (x && typeof x === 'object' && isDay(x.k) && TREATS.includes(x.t)) st.picks[x.k] = x.t; });
   if (Array.isArray(s.players)){
     const seen = {};
     s.players.slice(0, 6).forEach((a, i) => {
@@ -1108,6 +1244,10 @@ function okDelta(d){
   if (d.t === 'grade') return Number.isFinite(d.grade) && Number.isFinite(d.gy);
   if (d.t === 'add') return typeof d.id === 'string' && /^[a-z0-9]{1,16}$/.test(d.id) && typeof d.name === 'string';
   if (d.t === 'level') return !!BYID[d.game] && Number.isFinite(d.level);
+  if (d.t === 'wpick') return isDay(d.k) && (d.treat === '' || TREATS.includes(d.treat));
+  if (d.t === 'wdays') return Number.isFinite(d.n) && isDay(d.day);
+  if (d.t === 'wcheck') return isDay(d.day);
+  if (d.t === 'wopen' || d.t === 'wgiven') return isDay(d.k);
   return d.t === 'round' && /^\d{4}-\d{2}-\d{2}$/.test(d.day) && Array.isArray(d.res) && d.res.every(r => Array.isArray(r) && !!BYID[r[0]] && (r[1] === '' || !!parseFact(String(r[1]))));
 }
 function prune(P){
@@ -1126,10 +1266,17 @@ function apply(st, d){
   const P = st.players.find(x => x.id === (d.p || 'p1'));
   if (d.t === 'add'){
     if (st.players.length < 6 && !st.players.some(x => x.id === d.id)) st.players.push(newPlayer(d.id, String(d.name).trim().slice(0, 20) || 'New player', d.kind, d.grade, d.gy));
+  } else if (d.t === 'wpick'){
+    // Mom's choice of surprise for one week. Once a child has earned that week's surprise it stays as it is.
+    if (!st.players.some(x => x.wk.wins.some(w => w.k === d.k))){
+      if (TREATS.includes(d.treat)) st.picks[d.k] = d.treat; else delete st.picks[d.k];
+      const ks = Object.keys(st.picks).sort(); while (ks.length > 8) delete st.picks[ks.shift()];
+    }
   } else if (!P){
     // That player was removed on another device, so there is nothing to change.
   } else if (d.t === 'round'){
     const day = P.days[d.day] || (P.days[d.day] = {r:0, q:0, f:0, s:0});
+    if (!P.wk.b) P.wk.b = d.day < WEEK_FROM ? WEEK_FROM : d.day; // this child's weekly task starts with this round
     let clean = 0, first = 0;
     d.res.forEach(r => {
       const G = P.games[r[0]]; if (!G) return;
@@ -1161,6 +1308,7 @@ function apply(st, d){
         }
       }
     }
+    if (d.done) checkWin(st, P, d.day);
     prune(P);
   } else if (d.t === 'name'){
     P.name = String(d.name).trim().slice(0, 20) || P.name;
@@ -1171,15 +1319,22 @@ function apply(st, d){
   } else if (d.t === 'grade'){
     P.grade = clamp(Math.round(d.grade), -3, 8); P.gy = num(d.gy, 2020, 2100); placeFresh(P);
   } else if (d.t === 'reset'){
-    Object.assign(P, newPlayer(P.id, P.name, P.kind, P.grade, P.gy)); placeFresh(P);
+    const n = P.wk.n; Object.assign(P, newPlayer(P.id, P.name, P.kind, P.grade, P.gy)); P.wk.n = n; placeFresh(P);
   } else if (d.t === 'remove'){
     if (st.players.length > 1) st.players = st.players.filter(x => x !== P);
+  } else if (d.t === 'wdays'){
+    P.wk.n = clamp(Math.round(d.n), 3, 7); checkWin(st, P, d.day);
+  } else if (d.t === 'wcheck'){
+    checkWin(st, P, d.day);
+  } else if (d.t === 'wopen' || d.t === 'wgiven'){
+    const w = P.wk.wins.find(x => x.k === d.k);
+    if (w){ if (d.t === 'wopen') w.o = 1; else w.g = d.g ? 1 : 0; }
   }
   st.updatedAt = Math.max(Date.now(), (st.updatedAt || 0) + 1);
 }
 // The saved copy lists facts and days as rows, so no fact text is ever used as a field name.
 function pack(st){
-  return {v:2, updatedAt:st.updatedAt, players:st.players.map(P => {
+  return {v:2, updatedAt:st.updatedAt, picks:Object.keys(st.picks).sort().map(k => ({k, t:st.picks[k]})), players:st.players.map(P => {
     const o = clone(P);
     o.facts = Object.keys(P.facts).map(k => Object.assign({k}, P.facts[k]));
     o.days = Object.keys(P.days).sort().map(k => Object.assign({k}, P.days[k]));
@@ -1308,7 +1463,7 @@ function hush(){ try { if (canSpeak) window.speechSynthesis.cancel(); } catch (e
 
 /* ---------- playing a round ---------- */
 let screen = 'home', round = null, cur = null, busy = false, token = 0, timers = [], lastGame = 'mix';
-function show(id){ ['home', 'game', 'done', 'mom'].forEach(s => { $('#' + s).hidden = s !== id; }); screen = id; $('#' + id).scrollTop = 0; }
+function show(id){ ['home', 'game', 'done', 'gift', 'mom'].forEach(s => { $('#' + s).hidden = s !== id; }); screen = id; $('#' + id).scrollTop = 0; }
 function later(fn, ms){ const my = token; timers.push(setTimeout(() => { if (my === token) fn(); }, ms)); }
 function stopTimers(){ timers.forEach(clearTimeout); timers = []; token++; }
 
@@ -1513,8 +1668,13 @@ function showDone(stars, first, N, before, after, game){
   const lv = $('#doneLevel'); lv.hidden = after === before; lv.classList.toggle('down', after < before);
   if (after > before) lv.textContent = 'Level ' + after + ' unlocked: ' + (isLittle(game) ? '' : 'numbers ') + levelLabel(game, after) + '.';
   else if (after < before) lv.textContent = 'Next time: Level ' + after + ', for a little more practice.';
-  const d = me().days[dayKey()], r = d ? d.r : 0;
+  const P = me(), d = P.days[dayKey()], r = d ? d.r : 0;
   $('#doneToday').textContent = r < GOAL ? r + ' of ' + GOAL + ' rounds done today.' : r === GOAL ? 'That is ' + GOAL + ' rounds. Done for today!' : r + ' rounds today. Wow!';
+  // The weekly task: say when today's box fills, and offer the gift when the last one does.
+  const W = weekNow(P), wait = W.win && !W.win.o ? W.win : null, dw = $('#doneWeek');
+  dw.hidden = !(wait || (!W.win && r === W.need));
+  dw.textContent = wait ? 'You filled every box this week!' : 'Today’s box is filled: ' + W.filled + ' of ' + W.target + ' this week.';
+  $('#giftGo').hidden = !wait; $('#againBtn').className = wait ? 'plain' : 'big';
   show('done'); sfx('win');
 }
 function goHome(){ renderHome(); show('home'); pullSoon(); }
@@ -1527,6 +1687,42 @@ function chips(withAdd){
     (withAdd && state.players.length < 6 ? '<button type="button" class="chip add" data-add="1">+ Add a player</button>' : '');
 }
 function pickPlayer(id){ if (byId(id)){ prefs.player = id; persist(); } }
+
+/* ---------- the weekly task ---------- */
+function weekNow(P){
+  const k = dayKey(), mon = mondayOf(k), need = needOn(P, k), win = winOf(P, mon), target = targetFor(P, mon, dayNum(k));
+  return {k, mon, need, win, target, filled:win ? target : Math.min(boxesIn(P, mon, need), target)};
+}
+// An earlier week's surprise that was earned but never opened or given.
+function waiting(P, W){ const mk = keyOfNum(W.mon); return P.wk.wins.filter(w => !w.o && !w.g && w.k < mk).slice(-1)[0] || null; }
+// Boxes that were already full before the surprise could be written down (an older copy, or a changed setting).
+const settled = {};
+function settleWeek(P){
+  const W = weekNow(P), id = P.id + W.k;
+  if (W.win || settled[id] || boxesIn(P, W.mon, W.need) < W.target) return;
+  settled[id] = 1; commit({t:'wcheck', p:P.id, day:W.k});
+}
+let giftWin = null;
+function drawGift(win){
+  const open = !!win.o, name = TREAT_NAME[win.t];
+  $('#giftTitle').textContent = open ? 'Surprise!' : 'You filled every box!';
+  const box = $('#giftBox'); box.hidden = open; if (!open) box.innerHTML = giftPic(true);
+  const tr = $('#giftTreat'); tr.hidden = !open; if (open){ tr.innerHTML = treatPic(win.t); tr.setAttribute('aria-label', name); }
+  const nm = $('#giftName'); nm.hidden = !open; nm.textContent = name + '!';
+  $('#giftLine').textContent = open ? (win.g ? 'That was your surprise.' : 'Show this to Mom or Dad.') : 'Tap the gift to open it!';
+  $('#giftHome').className = open ? 'big' : 'plain';
+}
+function openGift(P, win){
+  if (!win) return;
+  giftWin = {p:P.id, k:win.k}; drawGift(win); show('gift');
+}
+function tapGift(){
+  const find = () => { const P = giftWin && byId(giftWin.p); return P ? P.wk.wins.find(w => w.k === giftWin.k) || null : null; };
+  const win = find(); if (!win || win.o) return;
+  commit({t:'wopen', p:giftWin.p, k:win.k});
+  const now = find(); if (!now) return;
+  drawGift(now); sfx('win'); if (prefs.read) say('Surprise! ' + TREAT_SAY[now.t] + '!');
+}
 
 /* ---------- home ---------- */
 function renderHome(){
@@ -1552,6 +1748,23 @@ function renderHome(){
   const pair = (a, b) => '<div class="pair">' + box(a) + box(b) + '</div>';
   $('#court').innerHTML = (kindOf(P) === 'little' ? box('ltap') + pair('lmany', 'lmore') + pair('lshape', 'lsize') : box('count') + pair('add', 'sub') + box('make') + pair('hop', 'miss') + box('story')) +
     '<button type="button" class="dome" id="momBtn"><b>For Mom</b><span>See how it is going</span></button>';
+  // This week's boxes, and the gift at the end of them.
+  settleWeek(P);
+  const W = weekNow(P), late = W.win ? null : waiting(P, W), opened = !!(W.win && W.win.o);
+  let bx = '';
+  for (let i = 0; i < W.target; i++) bx += '<span class="wkb' + (i < W.filled ? ' done"><svg viewBox="-14 -14 28 28"><path d="' + STAR + '" fill="currentColor"/></svg>' : '">') + '</span>';
+  const wb = $('#wkBoxes'); wb.className = 'wkboxes' + (W.target > 5 ? ' many' : ''); wb.innerHTML = bx;
+  wb.setAttribute('aria-label', W.filled + ' of ' + W.target + ' boxes filled this week');
+  const gb = $('#giftBtn');
+  gb.className = 'gift' + ((W.win && !opened) || late ? ' ready' : '');
+  gb.innerHTML = opened ? treatPic(W.win.t) : giftPic(!!(W.win || late));
+  gb.setAttribute('aria-label', opened ? 'Your surprise: ' + TREAT_NAME[W.win.t] : W.win || late ? 'Open your surprise' : 'The surprise opens when the boxes are full');
+  $('#wkNote').innerHTML = late ? '<b>Last week’s surprise is waiting!</b> Tap the gift to open it.'
+    : opened ? (W.win.g ? '<b>' + TREAT_NAME[W.win.t] + ' was this week’s surprise.</b> New boxes start on Monday.' : '<b>Your surprise: ' + TREAT_NAME[W.win.t] + '!</b> Show Mom or Dad.')
+    : W.win ? '<b>You filled every box!</b> Tap the gift to open it.'
+    : W.filled === 0 ? '<b>Fill ' + W.target + (W.target === 1 ? ' box' : ' boxes') + ' this week.</b> ' + (W.need === 1 ? 'A box fills each day you play.' : 'A box fills when all ' + GOAL + ' rounds are done.')
+    : W.target - W.filled === 1 ? '<b>' + W.filled + ' of ' + W.target + ' boxes filled.</b> One more opens the surprise!'
+    : '<b>' + W.filled + ' of ' + W.target + ' boxes filled.</b> Fill them all to open the surprise!';
   const sb = $('#soundBtn'); sb.classList.toggle('off', !prefs.sound); sb.setAttribute('aria-pressed', prefs.sound ? 'true' : 'false');
 }
 
@@ -1578,6 +1791,22 @@ function renderMom(){
   let h = '<div class="who" id="who2" role="group" aria-label="Whose progress">' + chips(true) + '</div><p class="lead">' + lead + '</p>' +
     '<p class="aim">' + nm + ' is ' + (stage >= -1 ? 'in ' : '') + '<b>' + gradeName(stage) + '</b>. The games aim one year ahead: <b>' + workName(Math.min(aim, little ? -1 : TOP_GRADE)) + '</b>.' +
     (!little && aim > TOP_GRADE ? ' Grade ' + TOP_GRADE + ' is the hardest work in the app so far.' : '') + '</p>';
+
+  // This week's task, Mom's choices for it, and the surprises still to give.
+  const W = weekNow(P), monKey = keyOfNum(W.mon), lastMon = keyOfNum(W.mon - 7), auto = autoTreat(W.mon), owe = [];
+  const earned = state.players.map(x => winOf(x, W.mon)).find(Boolean) || null, chosen = earned ? earned.t : state.picks[monKey] || '';
+  state.players.forEach(x => x.wk.wins.forEach(w => { if (!w.g || w.k >= lastMon) owe.push({x, w}); }));
+  owe.sort((a, b) => (a.w.k < b.w.k ? -1 : a.w.k > b.w.k ? 1 : 0));
+  h += '<section><h2>This week’s task</h2>' +
+    '<p class="lead">' + (W.win ? nm + ' filled every box this week. The surprise: <b>' + TREAT_NAME[W.win.t] + '</b>.' : nm + ' has filled <b>' + W.filled + ' of ' + W.target + '</b> boxes this week.') + '</p>' +
+    '<p class="hint">A box fills on each day ' + nm + ' finishes ' + (W.need === 1 ? 'one round' : W.need + ' rounds') + '. The week runs Monday to Sunday. Full boxes open a gift on ' + nm + '’s screen, and it shows the surprise.' +
+    (!W.win && W.target < P.wk.n ? ' This first week is a short one, so it needs only ' + W.target + '.' : '') + '</p>' +
+    '<label class="field" for="wkDays">Days needed each week<select id="wkDays">' + [3, 4, 5, 6, 7].map(n => '<option value="' + n + '"' + (n === P.wk.n ? ' selected' : '') + '>' + n + ' days</option>').join('') + '</select></label>' +
+    '<label class="field" for="wkTreat">This week’s surprise<select id="wkTreat"' + (earned ? ' disabled' : '') + '><option value="">Let the app pick: ' + TREAT_NAME[auto] + '</option>' +
+    TREATS.map(t => '<option value="' + t + '"' + (chosen === t ? ' selected' : '') + '>' + TREAT_NAME[t] + '</option>').join('') + '</select></label>' +
+    '<p class="hint">' + (earned ? 'This week’s surprise has been earned, so it stays as it is.' : 'It is the same for every child this week, and it stays hidden from them until the boxes are full. The app does not pick the same one two weeks in a row.') + '</p>' +
+    (owe.length ? '<p class="owehead">Surprises earned</p>' + owe.map(o => '<div class="owe' + (o.w.g ? ' given' : '') + '"><span><b>' + esc(o.x.name) + '</b>: ' + TREAT_NAME[o.w.t] + ', week of ' + dayLabel(o.w.k) + (o.w.g ? '. Given.' : '') + '</span>' +
+      '<button type="button" class="plain" data-given="' + o.w.k + '" data-pid="' + o.x.id + '"' + (o.w.g ? ' data-undo="1">Undo' : '>Mark as given') + '</button></div>').join('') : '') + '</section>';
 
   h += '<section><h2>Last 7 days</h2><div class="week">' + days.map(d => '<div class="wd' + (d.today ? ' today' : '') + '"><span class="wl">' + d.w + '</span><span class="wc' + (d.r >= GOAL ? ' full' : d.q > 0 ? ' some' : '') + '">' + (d.r || '') + '</span></div>').join('') + '</div>' +
     '<p class="key"><span class="k"><span class="wc full mini"></span>' + GOAL + ' rounds or more</span><span class="k"><span class="wc some mini"></span>played a little</span><span>The number is rounds finished.</span></p>' +
@@ -1661,6 +1890,14 @@ function wire(){
   $('#againBtn').addEventListener('click', () => { startRound(lastGame); });
   $('#homeBtn').addEventListener('click', goHome);
   $('#momBack').addEventListener('click', goHome);
+  $('#giftBtn').addEventListener('click', () => {
+    const P = me(), W = weekNow(P), win = W.win || waiting(P, W);
+    if (win) openGift(P, win);
+    else { const b = $('#giftBtn'); b.classList.remove('nope'); void b.offsetWidth; b.classList.add('nope'); sfx('no'); }
+  });
+  $('#giftGo').addEventListener('click', () => { const P = me(), W = weekNow(P); openGift(P, W.win || waiting(P, W)); });
+  $('#giftBox').addEventListener('click', tapGift);
+  $('#giftHome').addEventListener('click', goHome);
   $('#momBody').addEventListener('click', e => {
     const b = e.target.closest('button'); if (!b) return;
     const P = me();
@@ -1682,6 +1919,7 @@ function wire(){
     else if (b.id === 'resetNo' || b.id === 'removeNo'){ $('#resetAsk').hidden = true; $('#removeAsk').hidden = true; }
     else if (b.id === 'resetYes'){ commit({t:'reset', p:P.id}); renderMom(); $('#mom').scrollTop = 0; }
     else if (b.id === 'removeYes'){ commit({t:'remove', p:P.id}); pickPlayer(state.players[0].id); renderMom(); $('#mom').scrollTop = 0; }
+    else if (b.dataset.given){ commit({t:'wgiven', p:b.dataset.pid, k:b.dataset.given, g:b.dataset.undo ? 0 : 1}); renderMom(); }
   });
   $('#momBody').addEventListener('change', e => {
     const t = e.target, P = me();
@@ -1690,10 +1928,13 @@ function wire(){
       if (v && v !== P.name){ commit({t:'name', p:P.id, name:v}); renderMom(); } else t.value = P.name;
     } else if (t.id === 'gradeSel'){ commit({t:'grade', p:P.id, grade:+t.value, gy:schoolYear()}); renderMom(); }
     else if (t.id === 'kindSel'){ commit({t:'kind', p:P.id, kind:t.value}); renderMom(); }
+    else if (t.id === 'wkDays'){ commit({t:'wdays', p:P.id, n:+t.value, day:dayKey()}); renderMom(); }
+    else if (t.id === 'wkTreat'){ commit({t:'wpick', k:keyOfNum(mondayOf(dayKey())), treat:t.value}); renderMom(); }
     else if (t.id === 'soundChk'){ prefs.sound = t.checked; persist(); sfx('ok'); }
     else if (t.id === 'readChk'){ prefs.read = t.checked; persist(); if (t.checked) say('I will read each question to you.'); }
   });
-  document.addEventListener('visibilitychange', () => { if (!document.hidden && (screen === 'home' || screen === 'mom')) pullSoon(); });
+  // Coming back to the page (maybe on a new day) redraws today's hops and the week's boxes.
+  document.addEventListener('visibilitychange', () => { if (document.hidden) return; if (screen === 'home') renderHome(); if (screen === 'home' || screen === 'mom') pullSoon(); });
 }
 
 function start(hot){
