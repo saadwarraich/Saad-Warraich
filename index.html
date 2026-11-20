@@ -267,6 +267,20 @@ button:disabled{cursor:default}
 .owe .plain{padding:9px 14px}
 .owe.given span{color:var(--dim)}
 
+/* English: letters, words and picture cards, and the Math / English switch */
+.etext{fill:var(--chalk);font-family:var(--body);font-weight:700}
+.etext .q{fill:var(--rose)}
+.eq.sent{min-height:70px;padding-top:6px;font-size:min(27px,6.8vw);line-height:1.3;letter-spacing:0}
+.answers.words .ans.ans:not(.card){height:86px;padding:0 4px;font-size:min(27px,6.6vw);letter-spacing:0}
+.answers.rows{grid-template-columns:1fr}
+.answers.rows .ans.ans:not(.card){height:auto;min-height:62px;padding:10px 16px;font-size:min(22px,5.6vw);line-height:1.3;letter-spacing:0;text-align:left}
+.subj{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.tab{appearance:none;display:flex;align-items:center;justify-content:center;gap:9px;min-height:50px;padding:6px 10px;border:3px solid var(--seam);border-radius:14px;background:transparent;color:var(--chalk);font-weight:700;font-size:18px;line-height:1.2}
+.tab .tk{font-family:var(--display);font-size:20px;color:var(--dim);white-space:nowrap}
+.tab.on{background:var(--chalk);border-color:var(--chalk);color:var(--ink)}
+.tab.on .tk{color:var(--ink)}
+.subh{margin:6px 0 -2px;font-family:var(--display);font-size:22px;font-weight:700;line-height:1.1;color:var(--sun)}
+
 @keyframes pop{0%{transform:scale(.2)}70%{transform:scale(1.2)}100%{transform:scale(1)}}
 @keyframes starpop{0%{transform:scale(0);opacity:0}70%{transform:scale(1.2);opacity:1}100%{transform:scale(1);opacity:1}}
 @keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
@@ -337,6 +351,12 @@ button:disabled{cursor:default}
   .treatName{font-size:70px}
   .owe,.owehead{font-size:18px}
   .doneBtns .plain{font-size:20px;padding:15px 18px}
+  .eq.sent{font-size:38px;min-height:96px}
+  .answers.words .ans.ans:not(.card){height:112px;font-size:38px}
+  .answers.rows .ans.ans:not(.card){min-height:84px;font-size:29px}
+  .tab{min-height:60px;font-size:22px}
+  .tab .tk{font-size:25px}
+  .subh{font-size:26px}
 }
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
 </style>
@@ -378,9 +398,13 @@ button:disabled{cursor:default}
         <div class="hops" id="hops" role="img" aria-label="Rounds played today"></div>
         <p class="todayNote" id="todayNote"></p>
       </div>
+      <div class="subj" id="subj" role="group" aria-label="Math or English">
+        <button type="button" class="tab" data-subj="math"><span class="tk">1 2 3</span>Math</button>
+        <button type="button" class="tab" data-subj="eng"><span class="tk">A B C</span>English</button>
+      </div>
       <button id="mixBtn" class="big" type="button">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4l14 8-14 8z" fill="currentColor"/></svg>
-        Play today's mix
+        <span id="mixText">Play today's math mix</span>
       </button>
     </div>
 
@@ -497,7 +521,27 @@ const LITTLE = [
   {id:'lsize', n:5, name:'Big & Small', sub:'Find the big one', col:'sun'}
 ];
 const BYID = {};
-BIG.concat(LITTLE).forEach(G => { BYID[G.id] = G; });
+// English: five games for Kindergarten and up, two for the little ones.
+const ENG = [
+  {id:'eabc', n:1, name:'Letters', sub:'Big, small and ABC order', col:'sun'},
+  {id:'esound', n:2, name:'Sounds', sub:'First and last sounds', col:'sky'},
+  {id:'eread', n:3, name:'Read', sub:'Words and pictures', col:'rose'},
+  {id:'espell', n:4, name:'Spell', sub:'Find the missing letter', col:'mint'},
+  {id:'esent', n:5, name:'Sentences', sub:'Finish it, fix it', col:'sun'}
+];
+const LITTLE_E = [
+  {id:'lword', n:1, name:'Words', sub:'Find the picture', col:'sky'},
+  {id:'labc', n:2, name:'Letters', sub:'Find the same one', col:'rose'}
+];
+// Each English level belongs to a school year (g), the same way the number levels do.
+const EL = {
+  eabc:{g:[0, 0, 0, 1], label:['big and small letters, the easy ones', 'big and small letters, all of them', 'which letter comes next', 'the missing letter']},
+  esound:{g:[0, 0, 1, 1], label:['the first letter of a word', 'the last letter of a word', 'sh, ch and th', 'two letters at the start (fr, st, cl)']},
+  eread:{g:[0, 1, 1, 2], label:['short words to pictures', 'short words that look alike', 'longer words (ship, frog, train)', 'words with a silent e (cake, bike)']},
+  espell:{g:[0, 0, 1, 1], label:['the first letter', 'the last letter', 'the middle vowel', 'two missing letters (sh, ch, fr)']},
+  esent:{g:[0, 1, 1, 2], label:['finish a sentence with a picture', 'the little word that fits', 'capital letters and end marks', 'question marks, and more than one']}
+};
+BIG.concat(LITTLE, ENG, LITTLE_E).forEach(G => { BYID[G.id] = G; });
 // Every level belongs to a school year (g): 0 Kindergarten, 1 Grade 1, 2 Grade 2. Below zero: -1 Pre-K, -2 age 3, -3 age 2.
 const LEVELS = [null,
   {max:5, pics:true, g:0, label:'to 5, with pictures'},
@@ -512,13 +556,24 @@ const LLABEL = {
   lmany:['1 to 3, two choices', '1 to 5, three choices', 'up to 10, three choices'],
   lmore:['easy to see', 'close numbers', 'up to 10, more and fewer'],
   lshape:['two choices', 'three choices', 'four choices, more shapes'],
-  lsize:['find the big one', 'big and small', 'biggest and smallest']
+  lsize:['find the big one', 'big and small', 'biggest and smallest'],
+  lword:['two pictures', 'three pictures', 'four pictures'],
+  labc:['two letters', 'three letters', 'four letters, some look alike']
 };
 const TOP_GRADE = 2; // the hardest work built so far is Grade 2
 const isLittle = id => !!LLABEL[id];
-const maxLevel = id => (isLittle(id) ? 3 : 6);
-const levelLabel = (id, lv) => (isLittle(id) ? LLABEL[id][lv - 1] : LEVELS[lv].label);
-const levelGrade = (id, lv) => (isLittle(id) ? lv - 4 : LEVELS[lv].g);
+const maxLevel = id => (isLittle(id) ? 3 : EL[id] ? EL[id].g.length : 6);
+const levelLabel = (id, lv) => (isLittle(id) ? LLABEL[id][lv - 1] : EL[id] ? EL[id].label[lv - 1] : LEVELS[lv].label);
+const levelGrade = (id, lv) => (isLittle(id) ? lv - 4 : EL[id] ? EL[id].g[lv - 1] : LEVELS[lv].g);
+// Where a game starts for a grade. Numbers start one step below the grade, so the first rounds feel easy and a perfect one moves up at once.
+// English starts on the first level that belongs to the grade.
+function startOf(id, grade){
+  if (isLittle(id)) return grade >= -1 ? 2 : 1;
+  if (!EL[id]) return grade >= 3 ? 5 : grade === 2 ? 4 : grade === 1 ? 2 : 1;
+  const g = EL[id].g;
+  for (let i = 0; i < g.length; i++) if (g[i] >= grade) return i + 1;
+  return g.length;
+}
 // The highest level of a game that belongs to a school year or an earlier one.
 function goalLevel(id, stage){ let lv = 1; for (let i = 1; i <= maxLevel(id); i++) if (levelGrade(id, i) <= stage) lv = i; return lv; }
 const gradeName = s => (s <= -3 ? 'age 2' : s === -2 ? 'age 3' : s === -1 ? 'Pre-K' : s === 0 ? 'Kindergarten' : 'Grade ' + s);
@@ -619,12 +674,99 @@ function cardGroup(n, kind, col, larger){
   return card(s);
 }
 
+/* ---------- English: words and pictures ---------- */
+// The pictures are emoji, so every word can have one. Each was picked because it has one plain name.
+const PIC = {
+  apple:'🍎', ball:'⚽', banana:'🍌', bear:'🐻', bed:'🛏️', bee:'🐝', bell:'🔔', bird:'🐦', book:'📖', bus:'🚌', cat:'🐱', car:'🚗', cow:'🐮', cake:'🎂', corn:'🌽', cookie:'🍪',
+  dog:'🐶', duck:'🦆', door:'🚪', egg:'🥚', elephant:'🐘', fish:'🐟', frog:'🐸', fox:'🦊', fire:'🔥', grapes:'🍇', guitar:'🎸', ghost:'👻', hat:'🎩', horse:'🐴', house:'🏠', heart:'❤️',
+  key:'🔑', lion:'🦁', lemon:'🍋', moon:'🌙', monkey:'🐵', mouse:'🐭', nose:'👃', octopus:'🐙', orange:'🍊', owl:'🦉', pig:'🐷', pizza:'🍕', panda:'🐼', pear:'🍐', ring:'💍', rocket:'🚀', robot:'🤖',
+  sun:'☀️', star:'⭐', snake:'🐍', snail:'🐌', tree:'🌳', tiger:'🐯', turtle:'🐢', train:'🚆', tent:'⛺', umbrella:'☂️', watermelon:'🍉', zebra:'🦓', box:'📦', bat:'🦇',
+  web:'🕸️', pen:'🖊️', map:'🗺️', ten:'🔟', six:'6️⃣', ant:'🐜', hen:'🐔', bug:'🐛', sad:'😢', run:'🏃', bag:'🎒', flower:'🌼', shoe:'👟',
+  ship:'🚢', sheep:'🐑', shell:'🐚', shark:'🦈', cheese:'🧀', cherry:'🍒', chicken:'🐔', chocolate:'🍫', three:'3️⃣', thumb:'👍', peach:'🍑', watch:'⌚',
+  drum:'🥁', crab:'🦀', sock:'🧦', clock:'⏰', flag:'🚩', boat:'⛵', bread:'🍞', cloud:'☁️', crown:'👑', spoon:'🥄',
+  bike:'🚲', rose:'🌹', whale:'🐳', plane:'✈️', five:'5️⃣', nine:'9️⃣', smile:'😀', globe:'🌍', game:'🎮', wave:'🌊', skate:'⛸️'
+};
+const words = t => t.split(' ');
+// Pictures a child can name without any help (for first sounds), and words that end in one clear letter.
+const NAMED = words('apple ball banana bear bed bee bell bird book bus cat car cow cake corn cookie dog duck door egg elephant fish frog fox fire grapes guitar ghost hat horse house heart key lion lemon moon monkey mouse nose octopus orange owl pig pizza panda pear ring rocket robot sun star snake snail tree tiger turtle train tent umbrella watermelon zebra box bat');
+const ENDS = words('cat dog pig sun bus bed hat fox box bat egg frog book star car moon corn lion lemon train tent bird drum crab robot bell ball heart boat pear door ghost guitar bear tiger');
+const CVC = words('cat dog pig sun bus bed hat fox box bat web pen map bag bug hen ten six sad run');
+const FIRSTREAD = CVC.concat(['egg', 'ant']);
+const TOTS = words('cat dog cow pig duck fish bird bee frog lion bear monkey horse mouse apple banana ball car bus sun moon star tree book hat egg cake cookie key bed door house train heart flower shoe');
+const SEE = words('cat dog pig bus bed hat fox box bat car ball book duck fish frog star tree bird bear cow bee key cake sun moon');
+// Two letters that make one sound, at the start or (1) at the end. Then two letters that blend at the start.
+const DIGS = [['sheep', 'sh'], ['shoe', 'sh'], ['shell', 'sh'], ['shark', 'sh'], ['ship', 'sh'], ['cheese', 'ch'], ['cherry', 'ch'], ['chicken', 'ch'], ['chocolate', 'ch'], ['three', 'th'], ['thumb', 'th'], ['fish', 'sh', 1], ['peach', 'ch', 1], ['watch', 'ch', 1]];
+const BLEND = {frog:'fr', flag:'fl', flower:'fl', tree:'tr', train:'tr', star:'st', snake:'sn', snail:'sn', spoon:'sp', drum:'dr', crab:'cr', crown:'cr', clock:'cl', cloud:'cl', grapes:'gr', bread:'br'};
+const BLENDS = ['fr', 'fl', 'tr', 'st', 'sn', 'sp', 'dr', 'cr', 'cl', 'gr', 'br'];
+const CHUNKS = DIGS.filter(d => d[0] !== 'chocolate').concat(Object.keys(BLEND).map(w => [w, BLEND[w]]));
+// Words that look like the right one, for "which word is it?".
+const LOOK = {
+  cat:['cap', 'cot', 'cut'], dog:['dig', 'dot', 'dug'], pig:['pin', 'peg', 'big'], sun:['fun', 'sit', 'sum'], bus:['bun', 'bug', 'but'], bed:['bad', 'bid', 'red'], hat:['hot', 'hit', 'hut'],
+  fox:['fix', 'box', 'fog'], box:['fox', 'boy', 'bug'], bat:['bit', 'bag', 'bad'], web:['wet', 'win', 'wig'], pen:['pan', 'pin', 'pet'], map:['mop', 'mat', 'man'], bag:['big', 'bug', 'beg'],
+  bug:['bag', 'rug', 'bun'], hen:['hat', 'pen', 'him'], ten:['tan', 'tin', 'hen'], six:['sit', 'mix', 'fix'], sad:['mad', 'sat', 'sit'], run:['sun', 'rug', 'rub'],
+  fish:['dish', 'wish', 'fist'], ship:['shop', 'chip', 'shin'], frog:['from', 'flag', 'fog'], duck:['dock', 'deck', 'luck'], drum:['drop', 'drip', 'dream'], crab:['crib', 'grab', 'club'],
+  star:['stir', 'stop', 'scar'], tree:['free', 'three', 'trip'], moon:['soon', 'noon', 'mood'], book:['look', 'cook', 'boot'], bell:['ball', 'bill', 'belt'], ball:['bell', 'bill', 'tall'],
+  ring:['rang', 'king', 'sing'], sock:['sick', 'lock', 'rock'], clock:['click', 'block', 'clap'], flag:['flat', 'frog', 'flap'], snail:['sail', 'nail', 'small'], train:['rain', 'brain', 'tray'],
+  boat:['coat', 'boot', 'beat'], corn:['horn', 'cord', 'coin'], bird:['bind', 'burn', 'bend'], sheep:['sleep', 'sheet', 'shop'], three:['tree', 'there', 'these'], shell:['shall', 'smell', 'sell'],
+  cheese:['choose', 'chess', 'cheer'], tent:['went', 'ten', 'test'], cloud:['could', 'clown', 'loud'], crown:['clown', 'brown', 'crow'], bread:['break', 'read', 'broad'], spoon:['soon', 'spin', 'spot'],
+  cake:['cave', 'cane', 'kite'], bike:['bake', 'like', 'hike'], rose:['rise', 'nose', 'rope'], nose:['note', 'rose', 'nine'], whale:['while', 'wheel', 'white'], snake:['snack', 'shake', 'snail'],
+  plane:['plan', 'plate', 'place'], five:['fire', 'dive', 'fine'], nine:['line', 'pine', 'nice'], fire:['five', 'tire', 'fine'], smile:['small', 'mile', 'while'], globe:['glove', 'glad', 'grape'],
+  game:['gate', 'name', 'came'], wave:['cave', 'save', 'wake'], skate:['state', 'shake', 'plate'], grapes:['grass', 'gates', 'grabs']
+};
+const LONG = words('fish ship frog duck drum crab star tree moon book bell ball ring sock clock flag snail train boat corn bird sheep three shell cheese tent cloud crown bread spoon');
+const MAGIC = words('cake bike rose nose whale snake plane five nine fire smile globe game wave skate grapes');
+// Pictures that could be taken for each other are never offered side by side.
+const APART = [['ant', 'bug'], ['ship', 'boat'], ['bird', 'duck'], ['hen', 'bird'], ['hen', 'duck']];
+// The little word that fits: the sentence, the right word, then two that do not fit.
+const FITS = [
+  ['I ? happy.', 'am', 'is', 'are'], ['She ? my friend.', 'is', 'am', 'are'], ['They ? playing.', 'are', 'is', 'am'], ['We ? at school.', 'are', 'is', 'am'], ['He ? a big dog.', 'has', 'have', 'am'],
+  ['I ? two hands.', 'have', 'has', 'am'], ['The cat ? on the bed.', 'is', 'are', 'am'], ['You ? my friend.', 'are', 'is', 'am'], ['It ? a red ball.', 'is', 'are', 'am'], ['The dogs ? big.', 'are', 'is', 'am'],
+  ['I ? run fast.', 'can', 'is', 'are'], ['We ? to the park.', 'go', 'goes', 'going'], ['She ? to school.', 'goes', 'go', 'going'], ['He ? to play.', 'likes', 'like', 'liking'], ['I ? my mom.', 'love', 'loves', 'loving'],
+  ['The bird ? fly.', 'can', 'is', 'are'], ['Look ? the dog.', 'at', 'in', 'on'], ['The fish is ? the water.', 'in', 'up', 'of'], ['I see ? cat.', 'a', 'an', 'at'], ['I see ? apple.', 'an', 'a', 'at'],
+  ['This is ? book.', 'my', 'me', 'I'], ['Come with ?.', 'me', 'my', 'I'], ['? is my dad.', 'He', 'Him', 'His'], ['? are my friends.', 'They', 'Them', 'This'], ['Do you ? pizza?', 'like', 'likes', 'liking'],
+  ['She ? a red hat.', 'has', 'have', 'am'], ['We ? happy.', 'are', 'is', 'am'], ['Where ? you?', 'are', 'is', 'am'], ['What ? this?', 'is', 'are', 'am'], ['I ? not sad.', 'am', 'is', 'are']
+];
+const RIGHT = ['The dog can run.', 'I like my cat.', 'We go to school.', 'My hat is red.', 'She has a big bag.', 'The sun is hot.', 'He can see the bus.', 'I have two hands.', 'The fish can swim.', 'We play in the park.', 'Look at the moon.', 'My mom is kind.'];
+const ASKS = ['Where is the dog', 'Can you see me', 'What is your name', 'Do you like cake', 'Who has my hat', 'Is it hot', 'How are you', 'Are we there'];
+const TELLS = ['I like my bike', 'The cat is on the bed', 'We can go home', 'My dog is big', 'She has a red hat', 'It is hot', 'You are my friend', 'He can run fast'];
+const MANY = [['cat', 'cats'], ['dog', 'dogs'], ['hat', 'hats'], ['pig', 'pigs'], ['bed', 'beds'], ['bug', 'bugs'], ['star', 'stars'], ['book', 'books'], ['tree', 'trees'], ['box', 'boxes'], ['bus', 'buses'], ['fox', 'foxes']];
+// Letters that look alike (small, then capital), and letters that can stand for the same sound.
+const ALIKE = {a:'eo', b:'dp', c:'eo', d:'bq', e:'ac', f:'t', g:'qy', h:'nb', i:'lj', j:'i', k:'x', l:'i', m:'nw', n:'mh', o:'ac', p:'qb', q:'pg', r:'n', s:'z', t:'f', u:'nv', v:'uw', w:'vm', x:'k', y:'gv', z:'s'};
+const BIGALIKE = {B:'PRD', C:'GO', D:'OB', E:'F', F:'EP', G:'CO', I:'LJ', J:'I', K:'X', L:'I', M:'NW', N:'MZ', O:'QCD', P:'RB', Q:'O', R:'PB', U:'V', V:'UW', W:'VM', X:'K', Z:'N'};
+const SAMESOUND = {c:'ks', k:'cqx', s:'czx', z:'s', x:'ksc', g:'j', j:'g'};
+const VOW = ['a', 'e', 'i', 'o', 'u'], ABC = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+// A wrong choice must never spell something unkind when it is dropped into the word.
+const UNKIND = words('fag hag gun pus fat tit sex cum ass bum poo pee die sin gin rum gay hoe sod wog jap fap vag crap damn hell slut shit piss poop butt dick cock porn kill dead hate suck turd twat wank fart homo dyke slag pimp thug drug beer sexy nude anus arse cunt fuck rape stab boob');
+const polite = (w, base) => UNKIND.indexOf(w) < 0 && !UNKIND.some(b => b.length > 3 && w.indexOf(b) >= 0 && (base || '').indexOf(b) < 0);
+const cap = w => w.charAt(0).toUpperCase() + w.slice(1);
+const emoCard = w => '<svg viewBox="0 0 100 100" aria-hidden="true"><text x="50" y="50" dy=".36em" text-anchor="middle" font-size="64">' + PIC[w] + '</text></svg>';
+// Letters (or pairs of letters) to offer beside the right one: none that sounds the same, none that would spell something unkind.
+function fillers(right, pool, n, make){
+  const base = make ? make(right) : '';
+  return shuffle(pool.filter(x => x !== right && (SAMESOUND[right] || '').indexOf(x) < 0 && (!make || polite(make(x), base)))).slice(0, n);
+}
+// Other words whose pictures cannot be taken for this one. For readers they also start with a different letter.
+function beside(w, list, n, anyLetter){
+  return shuffle(list.filter(x => x !== w && (anyLetter || x[0] !== w[0]) && PIC[x] !== PIC[w] && !APART.some(a => a.indexOf(w) >= 0 && a.indexOf(x) >= 0))).slice(0, n);
+}
+
 /* ---------- questions ---------- */
 function q0(o){
   const q = Object.assign({tries:0, hint:0, counted:[], help:false, hidden:false, solved:false, fresh:true, just:false, pics:true, eq:'', eqDone:'', helpLabel:'', L:null, anim:0,
     little:false, mode:'', gentle:false, cards:false, noStage:false, opts:null, showText:'', tip:'', hint1:''}, o);
   if (!q.key) q.key = q.fact;
   return q;
+}
+// An English question: the right choice, the wrong ones, and how they are shown (letters, words, whole lines or pictures).
+function eq0(o, right, wrong, how){
+  const all = shuffle([right].concat(wrong));
+  o.answer = all.indexOf(right); o.eng = true; o.fact = '';
+  if (how === 'pic'){ o.cards = true; o.opts = all.map((w, i) => ({v:i, label:w, html:emoCard(w)})); }
+  else { o.plain = true; o.opts = all.map((t, i) => ({v:i, text:t})); o.words = how === 'word'; o.rows = how === 'row'; }
+  if (o.show) o.lay = 'show'; else o.noStage = true;
+  if (!o.showText) o.showText = how === 'pic' || how === 'row' ? 'It is this one. Tap it.' : 'It is ' + right + '. Tap it.';
+  if (!o.hint1) o.hint1 = 'Not that one. Look again.';
+  return q0(o);
 }
 function fit(level, biggest){ return biggest > LEVELS[level].max ? (biggest > 10 ? 4 : 2) : level; }
 
@@ -899,6 +1041,104 @@ const gen = {
       opts:sizes.map((s, i) => ({v:i, label:'the ' + names(s) + ' one', html:cardOne(kind, col, s)})),
       prompt:'Tap the ' + word + ' one.', say:'Tap the ' + word + ' one.', yes:'Yes! That one is the ' + word + ' one.',
       tip:'Look at both. Which is ' + (level < 3 ? word : 'the ' + word) + '?', showText:'This is the ' + word + ' one. Tap it.'});
+  },
+
+  /* English */
+  eabc(level){
+    if (level <= 2){
+      const pool = level === 1 ? 'ABCKMOPSTUVWXZ'.split('') : ABC, U = pick(pool), l = U.toLowerCase(), down = level === 1 || Math.random() < 0.5;
+      const alike = (ALIKE[l] || '').split(''), far = shuffle(pool.map(x => x.toLowerCase()).filter(x => x !== l && alike.indexOf(x) < 0));
+      const wrong = level === 1 ? far.slice(0, 2) : shuffle(alike).slice(0, 1).concat(far).slice(0, 2), f = x => (down ? x : x.toUpperCase());
+      return eq0({game:'eabc', level, key:'abc' + U + (down ? 'd' : 'u'), show:{text:down ? U : l}, prompt:down ? 'Find the small letter.' : 'Find the big letter.',
+        say:down ? 'This is big ' + U + '. Find small ' + U + '.' : 'This is small ' + U + '. Find big ' + U + '.', yes:'Yes! Big ' + U + ' and small ' + l + ' go together.', tip:'It is the same letter, big and small.'}, f(l), wrong.map(f), 'text');
+    }
+    if (level === 3){
+      const i = rnd(0, 22), run = ABC.slice(i, i + 3), right = ABC[i + 3], wrong = [ABC[i + 4], ABC[i - 1], ABC[i + 5], ABC[i - 2]].filter(Boolean).slice(0, 2);
+      return eq0({game:'eabc', level, key:'next' + right, show:{text:run.join(' ') + ' ?'}, prompt:'Which letter comes next?', say:run.join(', ') + '. Which letter comes next?',
+        yes:'Yes! ' + run.concat(right).join(', ') + '.', tip:'Sing the ABC song in your head.'}, right, wrong, 'text');
+    }
+    const a = ABC.map(x => x.toLowerCase()), i = rnd(0, 22), at = rnd(0, 3), right = a[i + at], run = a.slice(i, i + 4);
+    return eq0({game:'eabc', level, key:'gap' + i + at, show:{text:run.map((x, k) => (k === at ? '?' : x)).join(' ')}, prompt:'Which letter is missing?', say:'Which letter is missing?',
+      yes:'Yes! ' + run.join(', ') + '.', tip:'Say the letters in ABC order.'}, right, shuffle([a[i - 1], a[i + 4], a[i - 2], a[i + 5]].filter(Boolean)).slice(0, 3), 'text');
+  },
+  esound(level){
+    if (level === 1){
+      const w = pick(NAMED), L = w[0];
+      return eq0({game:'esound', level, key:'first' + w, show:{pic:PIC[w]}, eqDone:w, prompt:'What letter does it start with?', say:cap(w) + '. What letter does ' + w + ' start with?',
+        yes:'Yes! ' + cap(w) + ' starts with ' + L + '.', tip:'Say the word. Listen to the first sound.'}, L, fillers(L, words('a b c d e f g h k l m n o p r s t w z'), 2, x => x + w.slice(1)), 'text');
+    }
+    if (level === 2){
+      const w = pick(ENDS), L = w[w.length - 1];
+      return eq0({game:'esound', level, key:'last' + w, show:{pic:PIC[w]}, eqDone:w, prompt:'What letter does it end with?', say:cap(w) + '. What letter does ' + w + ' end with?',
+        yes:'Yes! ' + cap(w) + ' ends with ' + L + '.', tip:'Say the word. Listen to the last sound.'}, L, fillers(L, words('b d g l m n p r s t x'), 2, x => w.slice(0, -1) + x), 'text');
+    }
+    if (level === 3){
+      const it = pick(DIGS), w = it[0], right = it[1], end = it[2] === 1;
+      return eq0({game:'esound', level, key:'dig' + w, show:{pic:PIC[w]}, eqDone:w, prompt:end ? 'Which two letters does it end with?' : 'Which two letters does it start with?',
+        say:cap(w) + '. Which two letters does ' + w + (end ? ' end with?' : ' start with?'), yes:'Yes! ' + cap(w) + (end ? ' ends with ' : ' starts with ') + right + '.', tip:'Say the word slowly.'},
+        right, ['sh', 'ch', 'th'].filter(x => x !== right), 'text');
+    }
+    const w = pick(Object.keys(BLEND)), right = BLEND[w];
+    return eq0({game:'esound', level, key:'blend' + w, show:{pic:PIC[w]}, eqDone:w, prompt:'Which two letters does it start with?', say:cap(w) + '. Which two letters does ' + w + ' start with?',
+      yes:'Yes! ' + cap(w) + ' starts with ' + right + '.', tip:'Say the word slowly. Two sounds come first.'}, right, fillers(right, BLENDS, 2, null), 'text');
+  },
+  eread(level){
+    const list = level === 1 ? FIRSTREAD : level === 2 ? CVC : level === 3 ? LONG : MAGIC, w = pick(list);
+    if (level === 1 || (level >= 3 && Math.random() < 0.5)){
+      return eq0({game:'eread', level, key:'read' + w, eq:w, eqDone:w, prompt:'Read the word. Tap its picture.', say:'Read the word. Then tap its picture.',
+        yes:'Yes! That says ' + w + '.', tip:'Sound it out, one letter at a time.'}, w, beside(w, list, 2), 'pic');
+    }
+    return eq0({game:'eread', level, key:'pick' + w, show:{pic:PIC[w]}, eqDone:w, prompt:'Which word is it?', say:'Look at the picture. Which word is it?',
+      yes:'Yes! That word is ' + w + '.', tip:'Look at every letter.'}, w, shuffle(LOOK[w]).slice(0, 2), 'word');
+  },
+  espell(level){
+    if (level <= 3){
+      const w = pick(CVC), i = level === 1 ? 0 : level === 2 ? 2 : 1, right = w[i], form = x => w.slice(0, i) + x + w.slice(i + 1);
+      const pool = level === 3 ? VOW : level === 1 ? words('b c d f g h l m n p r s t w') : words('b d g m n p s t x');
+      return eq0({game:'espell', level, key:'sp' + level + w, show:{pic:PIC[w]}, eq:form('?'), eqDone:w, prompt:'Which letter is missing?', say:cap(w) + '. Which letter is missing?',
+        yes:'Yes! ' + w.split('').join('-') + ' spells ' + w + '.', tip:'Say the word slowly. Which sound is missing?'}, right, fillers(right, pool, 2, form), 'text');
+    }
+    const it = pick(CHUNKS), w = it[0], right = it[1], end = it[2] === 1, form = x => (end ? w.slice(0, -2) + x : x + w.slice(2));
+    const wrong = BLENDS.indexOf(right) < 0 ? ['sh', 'ch', 'th'].filter(x => x !== right && polite(form(x), w)) : fillers(right, BLENDS, 2, form);
+    return eq0({game:'espell', level, key:'sp4' + w, show:{pic:PIC[w]}, eq:form('?'), eqDone:w, prompt:'Which two letters are missing?', say:cap(w) + '. Which two letters are missing?',
+      yes:'Yes! That spells ' + w + '.', tip:'Say the word slowly.'}, right, wrong, 'text');
+  },
+  esent(level){
+    if (level === 1){
+      const w = pick(SEE), frame = pick(w === 'sun' || w === 'moon' ? ['I see the ?.', 'Look at the ?.'] : ['I see a ?.', 'This is a ?.', 'Look at the ?.', 'I like the ?.', 'Here is a ?.']);
+      return eq0({game:'esent', level, sent:true, key:'see' + w, show:{pic:PIC[w]}, eq:frame, eqDone:frame.replace('?', w), prompt:'Finish the sentence.', say:frame.replace('?', 'blank') + ' Which word finishes it?',
+        yes:'Yes! ' + frame.replace('?', w), tip:'Read it out loud. Look at the picture.'}, w, beside(w, SEE, 2), 'word');
+    }
+    if (level === 2){
+      const it = pick(FITS);
+      return eq0({game:'esent', level, sent:true, key:'fit' + it[0], eq:it[0], eqDone:it[0].replace('?', it[1]), prompt:'Which word fits?', say:it[0].replace('?', 'blank') + ' Which word fits?',
+        yes:'Yes! ' + it[0].replace('?', it[1]), tip:'Read it with each word. Which one sounds right?'}, it[1], it.slice(2), 'word');
+    }
+    if (level === 3){
+      const t = pick(RIGHT);
+      return eq0({game:'esent', level, key:'right' + t, prompt:'Which one is written the right way?', say:'Which one is written the right way? Look for a capital letter at the start and a mark at the end.',
+        yes:'Yes! It starts with a capital letter and ends with a period.', tip:'Look at the first letter and at the end.', showText:'This one has a capital letter and an end mark. Tap it.'},
+        t, [t.charAt(0).toLowerCase() + t.slice(1), t.slice(0, -1)], 'row');
+    }
+    if (Math.random() < 0.5){
+      const ask = Math.random() < 0.5, t = pick(ask ? ASKS : TELLS), right = ask ? '?' : '.';
+      return eq0({game:'esent', level, sent:true, key:'mark' + t, eq:t + ' __', eqDone:t + right, prompt:'Which mark goes at the end?', say:t + '. Which mark goes at the end?',
+        yes:ask ? 'Yes! It asks something, so it ends with a question mark.' : 'Yes! It tells something, so it ends with a period.', tip:'Does it ask something or tell something?',
+        showText:ask ? 'It asks something. Tap the question mark.' : 'It tells something. Tap the period.'}, right, [ask ? '.' : '?'], 'text');
+    }
+    const it = pick(MANY), w = it[0];
+    return eq0({game:'esent', level, sent:true, key:'many' + w, show:{pic:PIC[w] + PIC[w], two:true}, eq:'I see two ?.', eqDone:'I see two ' + it[1] + '.', prompt:'Which word fits?', say:'I see two blank. Which word fits?',
+      yes:'Yes! One ' + w + ', two ' + it[1] + '.', tip:'More than one needs a new ending.'}, it[1], [w, w + 's', w + 'es'].filter(x => x !== it[1]), 'word');
+  },
+  lword(level){
+    const w = pick(TOTS);
+    return eq0({game:'lword', little:true, gentle:true, level, key:'word' + w, prompt:'Find the ' + w + '.', say:'Find the ' + w + '.', yes:'Yes! That is the ' + w + '.',
+      tip:'Say it together: ' + w + '.', showText:'This is the ' + w + '. Tap it.'}, w, beside(w, TOTS, level, true), 'pic');
+  },
+  labc(level){
+    const U = pick(ABC), alike = (BIGALIKE[U] || '').split(''), far = shuffle(ABC.filter(x => x !== U && alike.indexOf(x) < 0));
+    return eq0({game:'labc', little:true, gentle:true, level, key:'same' + U, show:{text:U}, prompt:'Find the same letter.', say:'This is ' + U + '. Find the same letter.', yes:'Yes! That is ' + U + '.',
+      tip:'Look at its shape.', showText:'This one is the same. Tap it.'}, U, level === 3 ? shuffle(alike).slice(0, 1).concat(far).slice(0, 3) : far.slice(0, level), 'text');
   }
 };
 
@@ -1072,11 +1312,19 @@ function placeDot(q, pos, lift){
   if (g) g.setAttribute('transform', 'translate(' + lineX(q, pos).toFixed(1) + ' ' + (q.dy - lift * q.lift).toFixed(1) + ')');
 }
 
+// English: one picture, two of them, a letter, or a row of letters with a gap.
+function showArt(q){
+  const o = q.show, cy = (SH / 2).toFixed(1);
+  if (o.pic) return '<text x="180" y="' + cy + '" dy=".36em" text-anchor="middle" font-size="' + Math.min(SH * 0.72, o.two ? 120 : 170).toFixed(0) + '">' + o.pic + '</text>';
+  const parts = o.text.split(' '), size = parts.length === 1 ? Math.min(SH * 0.78, 170) : Math.min(SH * 0.5, 300 / (parts.length * 0.95));
+  return '<text class="etext" x="180" y="' + cy + '" dy=".35em" text-anchor="middle" font-size="' + size.toFixed(0) + '">' + parts.map((t, i) => '<tspan' + (t === '?' ? ' class="q"' : '') + (i ? ' dx=".42em"' : '') + '>' + esc(t) + '</tspan>').join('') + '</text>';
+}
 function renderStage(){
   const q = cur, svg = $('#stage');
   if (!q || q.noStage) return;
   measure();
   if (q.game === 'hop'){ svg.innerHTML = drawLine(q); return; }
+  if (q.lay === 'show'){ svg.innerHTML = showArt(q); return; }
   if (q.lay === 'target'){ svg.innerHTML = '<g filter="url(#dust)"><g transform="translate(180 ' + (SH / 2).toFixed(1) + ') scale(' + clamp((SH / 2 - 14) / 12.5, 3, 7).toFixed(2) + ')">' + icon(q.shape, C.chalk) + '</g></g>'; return; }
   if (q.hidden || (!q.pics && q.lay !== 'bond')){ svg.innerHTML = thinking(); return; }
   const L = q.L || (q.L = build(q)), s = scaleOf(L), tx = (360 - L.w * s) / 2, ty = (SH - L.h * s) / 2;
@@ -1101,19 +1349,19 @@ function renderStage(){
 /* ---------- saved progress ---------- */
 const LS = 'sidewalk-sums-v1';
 const STANDALONE = true; // runs at its own web address, outside Claude
-let state, pending = [], lastSync = null, prefs = {sound:true, read:false, player:'p1'};
+let state, pending = [], lastSync = null, prefs = {sound:true, read:false, player:'p1', subj:'math'};
 let dbDoc = null, pushing = false, cloud = 'wait', localOK = true, gen0 = 0, lastPull = 0;
 
 // grade: the child's school year (0 Kindergarten, 1 Grade 1, -3 age 2) as of the school year that began in gy.
 function newPlayer(id, name, kind, grade, gy){
   const g = {}; Object.keys(BYID).forEach(k => { g[k] = {level:1, rounds:0, q:0, first:0, h:'', run:0, weak:0}; });
-  return {id, name, kind:kind === 'little' || kind === 'big' ? kind : 'auto', grade:Number.isFinite(grade) ? clamp(Math.round(grade), -3, 8) : 0, gy:Number.isFinite(gy) ? gy : schoolYear(), stars:0, games:g, facts:{}, days:{}, wk:{n:5, b:'', wins:[]}};
+  return {id, name, kind:kind === 'little' || kind === 'big' ? kind : 'auto', grade:Number.isFinite(grade) ? clamp(Math.round(grade), -3, 8) : 0, gy:Number.isFinite(gy) ? gy : schoolYear(), stars:0, games:g, facts:{}, days:{}, wk:{n:5, b:'', wins:[]}, pl:1};
 }
 // Three players to start with: Grade 1, Kindergarten and age 2, as of fall 2026.
 // This copy sits at a public address, so it names nobody: a personal link (#kids=Name.grade,...) fills the names in.
 const FIRST = {p1:['Player 1', 1], p2:['Player 2', 0], p3:['Little one', -3]};
 const STAND_IN = {};
-function fresh(){ return {v:2, players:Object.keys(FIRST).map(id => newPlayer(id, FIRST[id][0], 'auto', FIRST[id][1], 2026)), picks:{}, updatedAt:0}; }
+function fresh(){ return {v:2, players:Object.keys(FIRST).map(id => placeFresh(newPlayer(id, FIRST[id][0], 'auto', FIRST[id][1], 2026))), picks:{}, updatedAt:0}; }
 state = fresh();
 function me(){ return state.players.find(p => p.id === prefs.player) || state.players[0]; }
 function byId(id){ return state.players.find(p => p.id === id) || null; }
@@ -1148,6 +1396,7 @@ function checkWin(st, P, k){
   if (P.wk.wins.length > 12) P.wk.wins = P.wk.wins.slice(-12);
 }
 function gamesOf(P){ return kindOf(P) === 'little' ? LITTLE : BIG; }
+function engOf(P){ return kindOf(P) === 'little' ? LITTLE_E : ENG; }
 
 function parseFact(k){
   let m;
@@ -1207,6 +1456,8 @@ function normPlayer(a, i){
   };
   each(a.facts, (k, F) => { if (!parseFact(k)) return; const n = num(F.s, 1); P.facts[k] = {s:n, m:Math.min(num(F.m), n), l:F.l ? 1 : 0, d:num(F.d)}; });
   each(a.days, (k, D) => { if (!/^\d{4}-\d{2}-\d{2}$/.test(k)) return; const n = num(D.q); P.days[k] = {r:num(D.r), q:n, f:Math.min(num(D.f), n), s:num(D.s)}; });
+  // Copies saved before starts went by grade: lift what sat at the bottom, once.
+  if (a.pl !== 1) latePlace(P);
   const w = a.wk && typeof a.wk === 'object' ? a.wk : {};
   P.wk.n = w.n == null ? 5 : num(w.n, 3, 7);
   P.wk.b = isDay(w.b) ? w.b : '';
@@ -1255,17 +1506,23 @@ function prune(P){
   const fk = Object.keys(P.facts);
   if (fk.length > 300){ fk.sort((a, b) => P.facts[a].d - P.facts[b].d); fk.slice(0, fk.length - 300).forEach(k => { delete P.facts[k]; }); }
 }
-// A child who has not played a game yet starts it near their grade, not at the very bottom.
+// A child who has not played a game yet starts it at the level for their grade, not at the very bottom.
 function placeFresh(P){
-  const s = P.grade;
-  BIG.forEach(G => { const g = P.games[G.id]; if (!g.q) g.level = s >= 3 ? 5 : s === 2 ? 4 : s === 1 ? 2 : 1; });
-  LITTLE.forEach(G => { const g = P.games[G.id]; if (!g.q) g.level = s >= -1 ? 2 : 1; });
+  Object.keys(BYID).forEach(id => { const g = P.games[id]; if (!g.q) g.level = startOf(id, P.grade); });
+  return P;
+}
+// The same for a copy saved before that rule: a game below its starting level moves up, unless the child was finding it hard there.
+function latePlace(P){
+  Object.keys(BYID).forEach(id => {
+    const g = P.games[id], lv = startOf(id, P.grade);
+    if (g.level < lv && !g.weak && (g.q < 8 || g.first / g.q >= 0.5)){ g.level = lv; g.run = 0; }
+  });
 }
 // Every change is a small step that can be replayed on top of a newer saved copy.
 function apply(st, d){
   const P = st.players.find(x => x.id === (d.p || 'p1'));
   if (d.t === 'add'){
-    if (st.players.length < 6 && !st.players.some(x => x.id === d.id)) st.players.push(newPlayer(d.id, String(d.name).trim().slice(0, 20) || 'New player', d.kind, d.grade, d.gy));
+    if (st.players.length < 6 && !st.players.some(x => x.id === d.id)) st.players.push(placeFresh(newPlayer(d.id, String(d.name).trim().slice(0, 20) || 'New player', d.kind, d.grade, d.gy)));
   } else if (d.t === 'wpick'){
     // Mom's choice of surprise for one week. Once a child has earned that week's surprise it stays as it is.
     if (!st.players.some(x => x.wk.wins.some(w => w.k === d.k))){
@@ -1472,10 +1729,10 @@ function weakFacts(P){
     .sort((a, b) => { const A = P.facts[a], B = P.facts[b]; return (A.l - B.l) || (B.m - A.m) || (B.d - A.d); });
 }
 function buildRound(game){
-  const P = me(), mix = game === 'mix', little = mix ? kindOf(P) === 'little' : isLittle(game);
-  const plan = mix ? (little ? shuffle(['ltap', 'lmany', 'lmore', 'lshape', 'lsize', 'ltap']) : ['count'].concat(shuffle(['add', 'add', 'sub', 'sub', 'make', 'make', 'hop', 'miss', 'story']))) : Array(little ? 5 : 8).fill(game);
+  const P = me(), mix = game === 'mix' || game === 'emix', eng = game === 'emix' || !!(BYID[game] && ENG.concat(LITTLE_E).indexOf(BYID[game]) >= 0), little = mix ? kindOf(P) === 'little' : isLittle(game);
+  const plan = game === 'emix' ? shuffle(little ? ['lword', 'labc', 'lword', 'labc', 'lword'] : ['eabc', 'esound', 'esound', 'eread', 'eread', 'espell', 'espell', 'esent']) : mix ? (little ? shuffle(['ltap', 'lmany', 'lmore', 'lshape', 'lsize', 'ltap']) : ['count'].concat(shuffle(['add', 'add', 'sub', 'sub', 'make', 'make', 'hop', 'miss', 'story']))) : Array(little ? 5 : 8).fill(game);
   const N = plan.length, review = {};
-  if (!little){
+  if (!little && !eng){
     // A missed fact comes back only where it still fits the level that game is set to.
     const weak = weakFacts(P);
     let wi = 0;
@@ -1531,7 +1788,7 @@ function renderEq(){
 function renderAnswers(){
   const q = cur, box = $('#answers'), opts = q.opts || (q.choices || []).map(v => ({v, text:String(v)}));
   box.innerHTML = '';
-  box.className = 'answers' + (q.opts ? ' n' + opts.length : '');
+  box.className = 'answers' + (q.opts ? ' n' + opts.length : '') + (q.words ? ' words' : '') + (q.rows ? ' rows' : '');
   box.hidden = q.mode === 'tapall';
   if (box.hidden) return;
   opts.forEach(o => {
@@ -1547,6 +1804,7 @@ function showQuestion(){
   g.classList.toggle('little', !!q.little); g.classList.toggle('nostage', !!q.noStage); g.classList.toggle('tapall', q.mode === 'tapall');
   p.textContent = q.prompt; p.classList.toggle('long', !!q.long);
   $('#eq').hidden = !!q.little && q.mode !== 'tapall';
+  $('#eq').classList.toggle('sent', !!q.sent);
   renderPips(); renderEq(); renderAnswers(); renderStage(); idleNote();
   if (q.flash) later(hideFlash, 2600);
   if (prefs.read) say(q.say);
@@ -1609,7 +1867,7 @@ function showMe(){
     later(() => { settleHops(q); done(); }, animateHops(q));
     return;
   }
-  if (q.cards){ done(); return; }
+  if (q.cards || q.plain){ done(); return; }
   setNote('Let’s count together.', 'try');
   q.counted = []; renderStage();
   const targets = []; q.L.objs.forEach((o, i) => { if (o.target) targets.push(i); });
@@ -1666,7 +1924,7 @@ function showDone(stars, first, N, before, after, game){
   box.setAttribute('aria-label', stars + ' of 3 stars');
   $('#doneLine').textContent = (stars === 1 ? 'You kept going to the end. ' : '') + first + ' of ' + N + ' right on the first try.';
   const lv = $('#doneLevel'); lv.hidden = after === before; lv.classList.toggle('down', after < before);
-  if (after > before) lv.textContent = 'Level ' + after + ' unlocked: ' + (isLittle(game) ? '' : 'numbers ') + levelLabel(game, after) + '.';
+  if (after > before) lv.textContent = 'Level ' + after + ' unlocked: ' + (isLittle(game) || EL[game] ? '' : 'numbers ') + levelLabel(game, after) + '.';
   else if (after < before) lv.textContent = 'Next time: Level ' + after + ', for a little more practice.';
   const P = me(), d = P.days[dayKey()], r = d ? d.r : 0;
   $('#doneToday').textContent = r < GOAL ? r + ' of ' + GOAL + ' rounds done today.' : r === GOAL ? 'That is ' + GOAL + ' rounds. Done for today!' : r + ' rounds today. Wow!';
@@ -1746,7 +2004,11 @@ function renderHome(){
     return '<button type="button" class="box" data-game="' + id + '"><span class="num" style="color:var(--' + G.col + ')">' + G.n + '</span><span class="gname">' + G.name + '</span><span class="gsub">' + G.sub + '</span><span class="lv" id="lv-' + id + '">' + pips + ' Level ' + lv + '</span></button>';
   };
   const pair = (a, b) => '<div class="pair">' + box(a) + box(b) + '</div>';
-  $('#court').innerHTML = (kindOf(P) === 'little' ? box('ltap') + pair('lmany', 'lmore') + pair('lshape', 'lsize') : box('count') + pair('add', 'sub') + box('make') + pair('hop', 'miss') + box('story')) +
+  const eng = prefs.subj === 'eng', lit = kindOf(P) === 'little';
+  $$('#subj .tab').forEach(b => { const on = (b.dataset.subj === 'eng') === eng; b.classList.toggle('on', on); b.setAttribute('aria-pressed', on ? 'true' : 'false'); });
+  $('#mixText').textContent = eng ? 'Play today’s English mix' : 'Play today’s math mix';
+  $('#court').innerHTML = (eng ? (lit ? pair('lword', 'labc') : box('eabc') + pair('esound', 'eread') + pair('espell', 'esent'))
+    : lit ? box('ltap') + pair('lmany', 'lmore') + pair('lshape', 'lsize') : box('count') + pair('add', 'sub') + box('make') + pair('hop', 'miss') + box('story')) +
     '<button type="button" class="dome" id="momBtn"><b>For Mom</b><span>See how it is going</span></button>';
   // This week's boxes, and the gift at the end of them.
   settleWeek(P);
@@ -1812,7 +2074,7 @@ function renderMom(){
     '<p class="key"><span class="k"><span class="wc full mini"></span>' + GOAL + ' rounds or more</span><span class="k"><span class="wc some mini"></span>played a little</span><span>The number is rounds finished.</span></p>' +
     '<dl class="trio"><div><dt>Rounds this week</dt><dd>' + sum('r') + '</dd></div><div><dt>Stars this week</dt><dd>' + sum('s') + '</dd></div><div><dt>Days in a row</dt><dd>' + streak(P) + '</dd></div></dl></section>';
 
-  h += '<section><h2>How each game is going</h2><p class="hint">The bar shows answers right on the first try, over the last 40 questions.</p>' + list.map(G => {
+  h += '<section><h2>How each game is going</h2><p class="hint">The bar shows answers right on the first try, over the last 40 questions.</p>' + [['Math', list], ['English', engOf(P)]].map(grp => '<h3 class="subh">' + grp[0] + '</h3>' + grp[1].map(G => {
     const g = P.games[G.id], n = g.h.length, p = n ? Math.round(100 * (g.h.split('1').length - 1) / n) : 0, top = maxLevel(G.id), goal = goalLevel(G.id, aim);
     const st = !n ? ['none', 'Not played yet'] : n < 8 ? ['none', 'Just started'] : p >= 85 ? ['good', 'Strong'] : p >= 60 ? ['mid', 'Getting there'] : ['low', 'Needs practice'];
     return '<div class="grow"><div class="ghead"><span class="gnum">' + G.n + '</span><b>' + esc(G.name) + '</b><span class="pill ' + st[0] + '">' + st[1] + '</span></div>' +
@@ -1821,7 +2083,7 @@ function renderMom(){
       '<span class="lvtxt">Level ' + g.level + ' of ' + top + '<small>' + levelLabel(G.id, g.level) + '</small></span>' +
       '<button type="button" class="step" data-step="1" data-game="' + G.id + '" aria-label="Raise the level of ' + esc(G.name) + '"' + (g.level >= top ? ' disabled' : '') + '>+</button></div>' +
       '<p class="goal" data-goal="' + goal + '">' + (g.level >= goal ? 'Goal reached: Level ' + goal + ' is one year ahead.' : 'Goal: <b>Level ' + goal + '</b>, ' + workName(levelGrade(G.id, goal)) + '.') + '</p></div>';
-  }).join('') + '<p class="hint">A perfect round moves a game up right away until it reaches the goal. After that it takes two strong rounds. Two weak rounds in a row move it down one level, so the practice fits. Use the buttons to change a level yourself.</p></section>';
+  }).join('')).join('') + '<p class="hint">Each game starts at the level for ' + nm + '’s grade. A perfect round moves a game up right away until it reaches the goal. After that it takes two strong rounds. Two weak rounds in a row move it down one level, so the practice fits. Use the buttons to change a level yourself.</p></section>';
 
   const weak = weakFacts(P).slice(0, 8);
   h += '<section><h2>Practice these together</h2>' + (weak.length
@@ -1833,15 +2095,17 @@ function renderMom(){
       '<li>Count out loud together on every tap: one, two, three.</li>' +
       '<li>Name what you see: &ldquo;That is a star. This one is big.&rdquo;</li>' +
       '<li>Five minutes is plenty. Stop while it is still fun.</li>' +
-      '<li>Count real things all day: stairs, spoons, shoes.</li>'
+      '<li>Count real things all day: stairs, spoons, shoes.</li>' +
+      '<li>In the English games, say the name of each picture and each letter together.</li>'
     : '<li>Sit together for the first rounds. Let ' + nm + ' do the tapping.</li>' +
       '<li>After a right answer, ask &ldquo;How did you know?&rdquo; Saying it out loud makes it stick.</li>' +
       '<li>Stuck? Count real things: coins, grapes, fingers.</li>' +
       '<li>Stop after ' + GOAL + ' rounds, about 10 minutes. A little every day works better than a lot once a week.</li>' +
+      '<li>In the English games, say each word out loud and stretch it: c-a-t. The speaker button reads the question.</li>' +
       '<li>Praise the trying, not the speed.</li>') + '</ul></section>';
 
   const grades = [[-3, 'Age 2'], [-2, 'Age 3'], [-1, 'Pre-K (age 4)'], [0, 'Kindergarten'], [1, 'Grade 1'], [2, 'Grade 2'], [3, 'Grade 3'], [4, 'Grade 4'], [5, 'Grade 5']];
-  const kinds = [['auto', 'Automatic for the grade'], ['little', 'Little ones (counting, shapes, sizes)'], ['big', 'Big kids (adding and taking away)']];
+  const kinds = [['auto', 'Automatic for the grade'], ['little', 'Little ones (counting, shapes, first words)'], ['big', 'Big kids (adding, taking away, reading)']];
   h += '<section><h2>This player</h2>' +
     '<label class="field" for="nameInput">Name<input id="nameInput" type="text" maxlength="20" autocomplete="off" value="' + nm + '"></label>' +
     '<label class="field" for="gradeSel">Grade this school year<select id="gradeSel">' + grades.map(g => '<option value="' + g[0] + '"' + (g[0] === clamp(stage, -3, 5) ? ' selected' : '') + '>' + g[1] + '</option>').join('') + '</select></label>' +
@@ -1879,7 +2143,8 @@ function wire(){
     const b = e.target.closest('button'); if (!b) return;
     if (b.id === 'momBtn') openMom(); else if (b.dataset.game) startRound(b.dataset.game);
   });
-  $('#mixBtn').addEventListener('click', () => { startRound('mix'); });
+  $('#mixBtn').addEventListener('click', () => { startRound(prefs.subj === 'eng' ? 'emix' : 'mix'); });
+  $('#subj').addEventListener('click', e => { const b = e.target.closest('.tab'); if (b){ prefs.subj = b.dataset.subj === 'eng' ? 'eng' : 'math'; persist(); renderHome(); sfx('tick'); } });
   $('#momTop').addEventListener('click', openMom);
   $('#soundBtn').addEventListener('click', () => { prefs.sound = !prefs.sound; persist(); renderHome(); sfx('ok'); });
   $('#quitBtn').addEventListener('click', quit);
@@ -1948,6 +2213,7 @@ function start(hot){
     if (saved.prefs && typeof saved.prefs === 'object'){
       prefs.sound = saved.prefs.sound !== false; prefs.read = saved.prefs.read === true;
       if (typeof saved.prefs.player === 'string') prefs.player = saved.prefs.player;
+      prefs.subj = saved.prefs.subj === 'eng' ? 'eng' : 'math';
     }
   }
   // First open from a personal link: take the players' names and grades from it. Ignored once anyone has played.
@@ -1958,7 +2224,7 @@ function start(hot){
       const i = t.lastIndexOf('.'), g = parseInt(t.slice(i + 1), 10), name = t.slice(0, Math.max(i, 0)).trim().slice(0, 20);
       return name && Number.isFinite(g) ? [name, clamp(g, -3, 8)] : null;
     }).filter(Boolean);
-    if (list.length){ state.players = list.map((x, i) => newPlayer('p' + (i + 1), x[0], 'auto', x[1], schoolYear())); persist(); }
+    if (list.length){ state.players = list.map((x, i) => placeFresh(newPlayer('p' + (i + 1), x[0], 'auto', x[1], schoolYear()))); persist(); }
   }
   $('#starIcon').setAttribute('d', STAR);
   $('#cheer').innerHTML = dotFace();

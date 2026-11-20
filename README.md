@@ -1,10 +1,12 @@
 # Sidewalk Sums
 
-Math games for young children, drawn like chalk on a playground.
+Math and English games for young children, drawn like chalk on a playground.
 
 - Seven games for school-age players: counting, adding, taking away, making a number, hopping on a number line, finding the missing number, and story sums. Levels run from numbers to 5 with pictures up to adding and taking away within 100.
 - Five first games for toddlers: tap to count, how many, which has more, shapes, and big and small.
-- Each player has a grade. The games aim one school year ahead of it and move up or down with how the player is doing.
+- Five English games for school-age players: letters, first and last sounds, reading words, spelling, and sentences. Two for toddlers: first words and matching letters.
+- A switch on the home screen chooses Math or English.
+- Each player has a grade. Every game starts at the level for that grade, aims one school year ahead of it, and moves up or down with how the player is doing.
 - A weekly task: a box fills on each day the day's rounds are done. Enough boxes between Monday and Sunday open a gift that shows the week's surprise: pizza, a burger or bar-b-que.
 - A grown-up's corner shows the last seven days and how each game is going. It also sets how many days the weekly task needs, lets a grown-up choose the surprise, and keeps a list of surprises still to give.
 
