@@ -7,6 +7,8 @@ Math and English games for young children, drawn like chalk on a playground.
 - Five English games for school-age players: letters, first and last sounds, reading words, spelling, and sentences. Two for toddlers: first words and matching letters.
 - A switch on the home screen chooses Math or English.
 - Each player has a grade. Every game starts at the level for that grade, aims one school year ahead of it, and moves up or down with how the player is doing.
+- A different lesson every day: two games lead the day's mix, and the pair changes the next day. Questions asked today or the day before do not come back while new ones are left.
+- A little harder after each good day: one more question from the next level, marked Challenge, up to three in a round. A very good day moves the game up a level, and two hard days move it down.
 - A weekly task: a box fills on each day the day's rounds are done. Enough boxes between Monday and Sunday open a gift that shows the week's surprise: pizza, a burger or bar-b-que.
 - A grown-up's corner shows the last seven days and how each game is going. It also sets how many days the weekly task needs, lets a grown-up choose the surprise, and keeps a list of surprises still to give.
 

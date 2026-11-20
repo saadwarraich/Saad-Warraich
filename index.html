@@ -281,6 +281,12 @@ button:disabled{cursor:default}
 .tab.on .tk{color:var(--ink)}
 .subh{margin:6px 0 -2px;font-family:var(--display);font-size:22px;font-weight:700;line-height:1.1;color:var(--sun)}
 
+/* today's lesson, and the harder questions that grow day by day */
+.lessonNote{font-size:15px;line-height:1.35;color:var(--dim);text-align:center}
+.lessonNote b{color:var(--chalk)}
+.play.stretch .prompt::before{content:"\2605  Challenge";display:block;margin-bottom:2px;font-size:14px;font-weight:700;letter-spacing:.6px;color:var(--sun)}
+.stepnote{font-size:14.5px;line-height:1.35;color:var(--mint)}
+
 @keyframes pop{0%{transform:scale(.2)}70%{transform:scale(1.2)}100%{transform:scale(1)}}
 @keyframes starpop{0%{transform:scale(0);opacity:0}70%{transform:scale(1.2);opacity:1}100%{transform:scale(1);opacity:1}}
 @keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
@@ -357,6 +363,9 @@ button:disabled{cursor:default}
   .tab{min-height:60px;font-size:22px}
   .tab .tk{font-size:25px}
   .subh{font-size:26px}
+  .lessonNote{font-size:18px}
+  .play.stretch .prompt::before{font-size:18px}
+  .stepnote{font-size:18px}
 }
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
 </style>
@@ -406,6 +415,7 @@ button:disabled{cursor:default}
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4l14 8-14 8z" fill="currentColor"/></svg>
         <span id="mixText">Play today's math mix</span>
       </button>
+      <p class="lessonNote" id="lessonNote"></p>
     </div>
 
     <div class="wkcard" id="wkcard">
@@ -1354,7 +1364,7 @@ let dbDoc = null, pushing = false, cloud = 'wait', localOK = true, gen0 = 0, las
 
 // grade: the child's school year (0 Kindergarten, 1 Grade 1, -3 age 2) as of the school year that began in gy.
 function newPlayer(id, name, kind, grade, gy){
-  const g = {}; Object.keys(BYID).forEach(k => { g[k] = {level:1, rounds:0, q:0, first:0, h:'', run:0, weak:0}; });
+  const g = {}; Object.keys(BYID).forEach(k => { g[k] = {level:1, rounds:0, q:0, first:0, h:'', run:0, weak:0, s:0, dd:'', dn:0, dc:0, df:0, wd:0}; });
   return {id, name, kind:kind === 'little' || kind === 'big' ? kind : 'auto', grade:Number.isFinite(grade) ? clamp(Math.round(grade), -3, 8) : 0, gy:Number.isFinite(gy) ? gy : schoolYear(), stars:0, games:g, facts:{}, days:{}, wk:{n:5, b:'', wins:[]}, pl:1};
 }
 // Three players to start with: Grade 1, Kindergarten and age 2, as of fall 2026.
@@ -1448,6 +1458,8 @@ function normPlayer(a, i){
     const b = P.games[k];
     b.level = num(s.level, 1, maxLevel(k)); b.rounds = num(s.rounds); b.q = num(s.q); b.first = Math.min(num(s.first), b.q);
     b.h = typeof s.h === 'string' ? s.h.replace(/[^01]/g, '').slice(-40) : ''; b.run = num(s.run, 0, 4); b.weak = num(s.weak, 0, 2);
+    // The step (harder questions in a round), the day being counted, and that day's answers at this level.
+    b.s = num(s.s, 0, 3); b.dd = isDay(s.dd) ? s.dd : ''; b.dn = num(s.dn); b.dc = Math.min(num(s.dc), b.dn); b.df = Math.min(num(s.df), b.dn); b.wd = num(s.wd, 0, 2);
   });
   // Facts and days arrive as rows from the saved copy, or as plain objects from this device.
   const each = (v, fn) => {
@@ -1498,6 +1510,7 @@ function okDelta(d){
   if (d.t === 'wpick') return isDay(d.k) && (d.treat === '' || TREATS.includes(d.treat));
   if (d.t === 'wdays') return Number.isFinite(d.n) && isDay(d.day);
   if (d.t === 'wcheck') return isDay(d.day);
+  if (d.t === 'day') return isDay(d.day);
   if (d.t === 'wopen' || d.t === 'wgiven') return isDay(d.k);
   return d.t === 'round' && /^\d{4}-\d{2}-\d{2}$/.test(d.day) && Array.isArray(d.res) && d.res.every(r => Array.isArray(r) && !!BYID[r[0]] && (r[1] === '' || !!parseFact(String(r[1]))));
 }
@@ -1518,6 +1531,18 @@ function latePlace(P){
     if (g.level < lv && !g.weak && (g.q < 8 || g.first / g.q >= 0.5)){ g.level = lv; g.run = 0; }
   });
 }
+// How a game changes from one day to the next. A very good day moves it up a level. A good day adds one harder
+// question, from the next level, to the next day's rounds (up to 3). A hard day takes one away, and two hard days
+// in a row move the game down a level. Tap & Count cannot be missed, so it only moves up by its own rule.
+function rollGame(P, id){
+  const G = P.games[id], n = G.dn, top = maxLevel(id);
+  if (n >= 5 && G.dc / n >= 0.85 && G.level < top && id !== 'ltap'){ G.level++; G.run = 0; G.weak = 0; G.s = 0; G.wd = 0; }
+  else if (n >= 3 && G.df / n < 0.4){
+    G.s = Math.max(0, G.s - 1); G.wd++;
+    if (G.wd >= 2 && G.level > 1){ G.level--; G.run = 0; G.weak = 0; G.s = 0; G.wd = 0; }
+  } else { G.wd = 0; if (n >= 2 && G.df / n >= 0.6 && G.level < top) G.s = Math.min(3, G.s + 1); }
+  G.dd = ''; G.dn = G.dc = G.df = 0;
+}
 // Every change is a small step that can be replayed on top of a newer saved copy.
 function apply(st, d){
   const P = st.players.find(x => x.id === (d.p || 'p1'));
@@ -1534,17 +1559,22 @@ function apply(st, d){
   } else if (d.t === 'round'){
     const day = P.days[d.day] || (P.days[d.day] = {r:0, q:0, f:0, s:0});
     if (!P.wk.b) P.wk.b = d.day < WEEK_FROM ? WEEK_FROM : d.day; // this child's weekly task starts with this round
-    let clean = 0, first = 0;
+    // A harder question from the next level (r[4]) is practice ahead: it never counts against the child's level.
+    let clean = 0, first = 0, core = 0, xs = 0, xc = 0;
     d.res.forEach(r => {
       const G = P.games[r[0]]; if (!G) return;
-      G.q++; if (r[2]){ G.first++; first++; }
+      G.q++; if (r[2]) G.first++;
       G.h = (G.h + (r[2] ? '1' : '0')).slice(-40);
       if (r[1]){ const F = P.facts[r[1]] || (P.facts[r[1]] = {s:0, m:0, l:1, d:0}); F.s++; if (!r[2]) F.m++; F.l = r[2] ? 1 : 0; F.d = dayNum(d.day); }
       day.q++; if (r[2]) day.f++;
-      if (r[3]) clean++;
+      if (r[4] === 1){ xs++; if (r[3]) xc++; return; }
+      core++; if (r[2]) first++; if (r[3]) clean++;
+      // The day's own count for this game. It decides how the next day goes (see rollGame).
+      if (G.dd !== d.day && !(G.dd > d.day)){ if (G.dd) rollGame(P, r[0]); G.dd = d.day; G.dn = G.dc = G.df = 0; }
+      if (G.dd === d.day){ G.dn++; if (r[3]) G.dc++; if (r[2]) G.df++; }
     });
     if (d.done){
-      const stars = num(d.stars, 0, 3), N = d.res.length;
+      const stars = num(d.stars, 0, 3), N = core;
       day.r++; day.s += stars; P.stars += stars;
       const G = P.games[d.game];
       if (G && N){
@@ -1556,11 +1586,12 @@ function apply(st, d){
         if (clean >= Math.ceil(N * 0.875)){
           G.weak = 0; G.run = Math.min(need, G.run + 1);
           const fast = d.game !== 'ltap' && clean === N && G.level < goal; // a perfect round on the way to the goal moves up at once
-          if ((fast || G.run >= need) && G.level < maxLevel(d.game)){ G.level++; G.run = 0; }
+          const ace = xs >= 2 && xc === xs; // so does a strong round with every harder question right
+          if ((fast || ace || G.run >= need) && G.level < maxLevel(d.game)){ G.level++; G.run = 0; G.s = 0; G.wd = 0; G.dn = G.dc = G.df = 0; }
         } else {
           G.run = 0;
           // Two rounds in a row with most answers missed: step down one level so the practice fits.
-          if (first / N < 0.4){ G.weak = (G.weak || 0) + 1; if (G.weak >= 2 && G.level > 1){ G.level--; G.weak = 0; } }
+          if (first / N < 0.4){ G.weak = (G.weak || 0) + 1; if (G.weak >= 2 && G.level > 1){ G.level--; G.weak = 0; G.s = 0; G.wd = 0; G.dn = G.dc = G.df = 0; } }
           else G.weak = 0;
         }
       }
@@ -1570,7 +1601,7 @@ function apply(st, d){
   } else if (d.t === 'name'){
     P.name = String(d.name).trim().slice(0, 20) || P.name;
   } else if (d.t === 'level'){
-    const G = P.games[d.game]; if (G){ G.level = clamp(Math.round(d.level), 1, maxLevel(d.game)); G.run = 0; G.weak = 0; }
+    const G = P.games[d.game]; if (G){ G.level = clamp(Math.round(d.level), 1, maxLevel(d.game)); G.run = 0; G.weak = 0; G.s = 0; G.wd = 0; G.dn = G.dc = G.df = 0; }
   } else if (d.t === 'kind'){
     P.kind = d.kind === 'little' || d.kind === 'big' ? d.kind : 'auto';
   } else if (d.t === 'grade'){
@@ -1581,6 +1612,9 @@ function apply(st, d){
     if (st.players.length > 1) st.players = st.players.filter(x => x !== P);
   } else if (d.t === 'wdays'){
     P.wk.n = clamp(Math.round(d.n), 3, 7); checkWin(st, P, d.day);
+  } else if (d.t === 'day'){
+    // A new day has started: every game played on an earlier day takes its step.
+    Object.keys(P.games).forEach(id => { const G = P.games[id]; if (G.dd && G.dd < d.day) rollGame(P, id); });
   } else if (d.t === 'wcheck'){
     checkWin(st, P, d.day);
   } else if (d.t === 'wopen' || d.t === 'wgiven'){
@@ -1598,8 +1632,17 @@ function pack(st){
     return o;
   })};
 }
+// Questions asked today and on the day before, on this device, so the next rounds bring new ones.
+let recent = {};
+function lately(pid){ const o = {}, r = recent[pid] || {}; Object.keys(r).forEach(day => { r[day].forEach(k => { o[k] = 1; }); }); return o; }
+function noteRecent(pid, keys){
+  const r = recent[pid] || (recent[pid] = {}), today = dayKey();
+  r[today] = (r[today] || []).concat(keys).slice(-240);
+  Object.keys(r).sort().slice(0, -2).forEach(day => { delete r[day]; });
+  persist();
+}
 function persist(){
-  try { localStorage.setItem(LS, JSON.stringify({state, pending, lastSync, prefs})); localOK = true; }
+  try { localStorage.setItem(LS, JSON.stringify({state, pending, lastSync, prefs, recent})); localOK = true; }
   catch (e){ localOK = false; }
 }
 function commit(d){
@@ -1724,13 +1767,32 @@ function show(id){ ['home', 'game', 'done', 'gift', 'mom'].forEach(s => { $('#' 
 function later(fn, ms){ const my = token; timers.push(setTimeout(() => { if (my === token) fn(); }, ms)); }
 function stopTimers(){ timers.forEach(clearTimeout); timers = []; token++; }
 
+// A different lesson every day: two games lead today's mix, and the pair changes tomorrow.
+const LESSONS = {
+  math:[['add', 'make'], ['sub', 'hop'], ['miss', 'story'], ['add', 'count'], ['sub', 'make'], ['hop', 'miss'], ['story', 'add']],
+  eng:[['esound', 'eread'], ['espell', 'esent'], ['eabc', 'eread'], ['esound', 'espell'], ['eread', 'esent']]
+};
+function lessonOf(little, eng, n){
+  const list = (little ? (eng ? LITTLE_E : LITTLE) : eng ? ENG : BIG).map(G => G.id);
+  const lead = little ? [list[n % list.length]] : LESSONS[eng ? 'eng' : 'math'][n % LESSONS[eng ? 'eng' : 'math'].length];
+  const rest = list.filter(x => lead.indexOf(x) < 0), k = n % rest.length;
+  return {lead, rest:rest.slice(k).concat(rest.slice(0, k))};
+}
+// The mix: three questions from each lead game, the others take turns in the remaining places.
+function mixPlan(little, eng, n){
+  const L = lessonOf(little, eng, n), lead = L.lead.reduce((a, g) => a.concat([g, g, g]), []);
+  return shuffle(lead.concat(little ? (eng ? [L.rest[0], L.rest[0]] : L.rest.slice(0, 3)) : L.rest.slice(0, eng ? 2 : 4)));
+}
+function lessonLine(little, eng){
+  return 'Today’s lesson: ' + lessonOf(little, eng, dayNum(dayKey())).lead.map(id => '<b>' + esc(BYID[id].name) + '</b>').join(' and ') + '. A new one comes tomorrow.';
+}
 function weakFacts(P){
   return Object.keys(P.facts).filter(k => { const F = P.facts[k]; return F.l === 0 || (F.s >= 2 && F.m / F.s > 0.34); })
     .sort((a, b) => { const A = P.facts[a], B = P.facts[b]; return (A.l - B.l) || (B.m - A.m) || (B.d - A.d); });
 }
 function buildRound(game){
   const P = me(), mix = game === 'mix' || game === 'emix', eng = game === 'emix' || !!(BYID[game] && ENG.concat(LITTLE_E).indexOf(BYID[game]) >= 0), little = mix ? kindOf(P) === 'little' : isLittle(game);
-  const plan = game === 'emix' ? shuffle(little ? ['lword', 'labc', 'lword', 'labc', 'lword'] : ['eabc', 'esound', 'esound', 'eread', 'eread', 'espell', 'espell', 'esent']) : mix ? (little ? shuffle(['ltap', 'lmany', 'lmore', 'lshape', 'lsize', 'ltap']) : ['count'].concat(shuffle(['add', 'add', 'sub', 'sub', 'make', 'make', 'hop', 'miss', 'story']))) : Array(little ? 5 : 8).fill(game);
+  const plan = mix ? mixPlan(little, eng, dayNum(dayKey())) : Array(little ? 5 : 8).fill(game);
   const N = plan.length, review = {};
   if (!little && !eng){
     // A missed fact comes back only where it still fits the level that game is set to.
@@ -1745,21 +1807,37 @@ function buildRound(game){
       }
     });
   }
-  const qs = [], used = {}; let last = '';
+  // A little harder each day: some questions come from the next level up, as many as the game's step says (see rollGame).
+  const up = {}, cap = little ? 2 : 3;
+  if (mix){
+    const per = {}; let left = cap;
+    plan.forEach((g, i) => { (per[g] = per[g] || []).push(i); });
+    shuffle(Object.keys(per)).forEach(g => {
+      const G = P.games[g], m = per[g].length, k = G.level < maxLevel(g) ? Math.min(m - 1, Math.round(m * G.s / 4), left) : 0;
+      shuffle(per[g]).slice(0, k).forEach(i => { up[i] = 1; }); left -= k;
+    });
+  } else {
+    const G = P.games[game], k = G.level < maxLevel(game) ? Math.min(G.s, cap) : 0;
+    shuffle(Array.from({length:N - 1}, (_, i) => i + 1)).slice(0, k).forEach(i => { up[i] = 1; });
+  }
+  const qs = [], used = {}, old = lately(P.id); let last = '';
   for (let i = 0; i < N; i++){
     let q = null, g = plan[i];
     const rv = review[i];
     if (rv){ const c = gen[rv.g](P.games[rv.g].level, rv.f); if (!used[c.key]){ q = c; g = rv.g; } }
     if (!q){
-      const lv = P.games[g].level;
-      for (let t = 0; t < 14; t++){
+      const lv = P.games[g].level + (up[i] ? 1 : 0);
+      // New questions first: never one from this round, and for the first tries not one asked today or the day before.
+      for (let t = 0; t < 40; t++){
         const c = gen[g](lv, null);
-        if (!used[c.key]){ q = c; break; }
+        if (!used[c.key] && (t >= 30 || !old[c.key])){ q = c; break; }
         if (!q || q.key === last) q = c;
       }
+      q.stretch = !!up[i];
     }
     used[q.key] = 1; last = q.key; qs.push(q);
   }
+  noteRecent(P.id, qs.map(q => q.key));
   return qs;
 }
 function startRound(game){
@@ -1801,7 +1879,7 @@ function renderAnswers(){
 function showQuestion(){
   stopTimers(); busy = false;
   const q = cur = round.qs[round.i], p = $('#prompt'), g = $('#game');
-  g.classList.toggle('little', !!q.little); g.classList.toggle('nostage', !!q.noStage); g.classList.toggle('tapall', q.mode === 'tapall');
+  g.classList.toggle('little', !!q.little); g.classList.toggle('nostage', !!q.noStage); g.classList.toggle('tapall', q.mode === 'tapall'); g.classList.toggle('stretch', !!q.stretch);
   p.textContent = q.prompt; p.classList.toggle('long', !!q.long);
   $('#eq').hidden = !!q.little && q.mode !== 'tapall';
   $('#eq').classList.toggle('sent', !!q.sent);
@@ -1826,7 +1904,7 @@ function onCount(i){
     // The little ones' counting game: every tap is a count, and the last tap finishes it.
     if (prefs.sound) say(String(q.counted.length));
     if (q.counted.length >= q.n){
-      q.solved = true; round.res[round.i] = [q.game, q.fact, 1, 1];
+      q.solved = true; round.res[round.i] = [q.game, q.fact, 1, 1, q.stretch ? 1 : 0];
       sfx('ok'); setNote(esc(q.yes), 'good'); renderPips(); later(nextQ, 1700);
     }
     renderEq();
@@ -1881,7 +1959,7 @@ function answer(v, btn){
     q.solved = true; q.hidden = false;
     if (!q.pics && q.game !== 'hop'){ q.pics = true; q.L = null; }
     const ok = q.tries === 0;
-    round.res[round.i] = [q.game, q.fact, ok ? 1 : 0, ok && !q.help ? 1 : 0];
+    round.res[round.i] = [q.game, q.fact, ok ? 1 : 0, ok && !q.help ? 1 : 0, q.stretch ? 1 : 0];
     $$('.ans').forEach(b => { b.disabled = true; b.classList.remove('go'); });
     btn.classList.add('ok');
     sfx('ok'); setNote(esc(q.yes), 'good'); renderEq(); renderPips();
@@ -1903,7 +1981,8 @@ function nextQ(){ round.i++; if (round.i >= round.qs.length) finish(); else show
 function finish(){
   stopTimers(); hush();
   const res = round.res.filter(Boolean), N = res.length, first = res.filter(r => r[2]).length;
-  const ratio = N ? first / N : 0, stars = ratio >= 0.875 ? 3 : ratio >= 0.6 ? 2 : 1;
+  const skipped = res.filter(r => r[4] && !r[2]).length; // Challenge questions that were missed do not cost a star
+  const ratio = N - skipped ? first / (N - skipped) : 0, stars = ratio >= 0.875 ? 3 : ratio >= 0.6 ? 2 : 1;
   const game = round.game, pid = round.p, level = () => { const P = byId(pid); return P && P.games[game] ? P.games[game].level : 0; };
   const before = level();
   commit({t:'round', p:pid, day:dayKey(), game, res, stars, done:true});
@@ -1927,7 +2006,7 @@ function showDone(stars, first, N, before, after, game){
   if (after > before) lv.textContent = 'Level ' + after + ' unlocked: ' + (isLittle(game) || EL[game] ? '' : 'numbers ') + levelLabel(game, after) + '.';
   else if (after < before) lv.textContent = 'Next time: Level ' + after + ', for a little more practice.';
   const P = me(), d = P.days[dayKey()], r = d ? d.r : 0;
-  $('#doneToday').textContent = r < GOAL ? r + ' of ' + GOAL + ' rounds done today.' : r === GOAL ? 'That is ' + GOAL + ' rounds. Done for today!' : r + ' rounds today. Wow!';
+  $('#doneToday').textContent = r < GOAL ? r + ' of ' + GOAL + ' rounds done today.' : r === GOAL ? 'That is ' + GOAL + ' rounds. Done for today! A new lesson comes tomorrow.' : r + ' rounds today. Wow!';
   // The weekly task: say when today's box fills, and offer the gift when the last one does.
   const W = weekNow(P), wait = W.win && !W.win.o ? W.win : null, dw = $('#doneWeek');
   dw.hidden = !(wait || (!W.win && r === W.need));
@@ -1982,8 +2061,17 @@ function tapGift(){
   drawGift(now); sfx('win'); if (prefs.read) say('Surprise! ' + TREAT_SAY[now.t] + '!');
 }
 
+// The first look at the games on a new day: yesterday's results set today's steps and levels.
+const dayDone = {};
+function settleDay(P){
+  const today = dayKey(), id = P.id + today;
+  if (dayDone[id] || !Object.keys(P.games).some(k => P.games[k].dd && P.games[k].dd < today)) return;
+  dayDone[id] = 1; commit({t:'day', p:P.id, day:today});
+}
+
 /* ---------- home ---------- */
 function renderHome(){
+  settleDay(me());
   const P = me(), d = P.days[dayKey()], r = d ? d.r : 0;
   $('#who').innerHTML = chips(false);
   $('#hiName').textContent = P.name;
@@ -2007,6 +2095,7 @@ function renderHome(){
   const eng = prefs.subj === 'eng', lit = kindOf(P) === 'little';
   $$('#subj .tab').forEach(b => { const on = (b.dataset.subj === 'eng') === eng; b.classList.toggle('on', on); b.setAttribute('aria-pressed', on ? 'true' : 'false'); });
   $('#mixText').textContent = eng ? 'Play today’s English mix' : 'Play today’s math mix';
+  $('#lessonNote').innerHTML = lessonLine(lit, eng);
   $('#court').innerHTML = (eng ? (lit ? pair('lword', 'labc') : box('eabc') + pair('esound', 'eread') + pair('espell', 'esent'))
     : lit ? box('ltap') + pair('lmany', 'lmore') + pair('lshape', 'lsize') : box('count') + pair('add', 'sub') + box('make') + pair('hop', 'miss') + box('story')) +
     '<button type="button" class="dome" id="momBtn"><b>For Mom</b><span>See how it is going</span></button>';
@@ -2040,6 +2129,7 @@ function streak(P){
   return n;
 }
 function renderMom(){
+  settleDay(me());
   const P = me(), nm = esc(P.name), little = kindOf(P) === 'little', list = gamesOf(P), stage = stageOf(P), aim = stage + 1, t = new Date(), days = [];
   for (let i = 6; i >= 0; i--){
     const dt = new Date(t.getFullYear(), t.getMonth(), t.getDate() - i), v = P.days[dayKey(dt)] || {r:0, q:0, f:0, s:0};
@@ -2082,8 +2172,9 @@ function renderMom(){
       '<div class="lvl"><button type="button" class="step" data-step="-1" data-game="' + G.id + '" aria-label="Lower the level of ' + esc(G.name) + '"' + (g.level <= 1 ? ' disabled' : '') + '>' + MINUS + '</button>' +
       '<span class="lvtxt">Level ' + g.level + ' of ' + top + '<small>' + levelLabel(G.id, g.level) + '</small></span>' +
       '<button type="button" class="step" data-step="1" data-game="' + G.id + '" aria-label="Raise the level of ' + esc(G.name) + '"' + (g.level >= top ? ' disabled' : '') + '>+</button></div>' +
-      '<p class="goal" data-goal="' + goal + '">' + (g.level >= goal ? 'Goal reached: Level ' + goal + ' is one year ahead.' : 'Goal: <b>Level ' + goal + '</b>, ' + workName(levelGrade(G.id, goal)) + '.') + '</p></div>';
-  }).join('')).join('') + '<p class="hint">Each game starts at the level for ' + nm + '’s grade. A perfect round moves a game up right away until it reaches the goal. After that it takes two strong rounds. Two weak rounds in a row move it down one level, so the practice fits. Use the buttons to change a level yourself.</p></section>';
+      '<p class="goal" data-goal="' + goal + '">' + (g.level >= goal ? 'Goal reached: Level ' + goal + ' is one year ahead.' : 'Goal: <b>Level ' + goal + '</b>, ' + workName(levelGrade(G.id, goal)) + '.') + '</p>' +
+      (g.s > 0 && g.level < top ? '<p class="stepnote">Getting harder: ' + Math.min(g.s, little ? 2 : 3) + ' of ' + (little ? 5 : 8) + ' questions in a round now come from Level ' + (g.level + 1) + '.</p>' : '') + '</div>';
+  }).join('')).join('') + '<p class="hint">Each game starts at the level for ' + nm + '’s grade. The lesson changes every day. After a good day, the next day brings one more question from the next level, up to 3 in a round. After a very good day the game moves up a level, and after two hard days it moves down. A perfect round also moves a game up right away until it reaches the goal. After that it takes two strong rounds. Two weak rounds in a row move it down one level, so the practice fits. Use the buttons to change a level yourself.</p></section>';
 
   const weak = weakFacts(P).slice(0, 8);
   h += '<section><h2>Practice these together</h2>' + (weak.length
@@ -2209,6 +2300,11 @@ function start(hot){
   if (saved && saved.state){
     state = normalize(saved.state);
     pending = Array.isArray(saved.pending) ? saved.pending.filter(okDelta).slice(-40) : [];
+    if (saved.recent && typeof saved.recent === 'object') Object.keys(saved.recent).slice(0, 8).forEach(pid => {
+      const r = saved.recent[pid]; if (!r || typeof r !== 'object') return;
+      recent[pid] = {};
+      Object.keys(r).filter(isDay).sort().slice(-2).forEach(day => { if (Array.isArray(r[day])) recent[pid][day] = r[day].filter(k => typeof k === 'string').slice(-240); });
+    });
     lastSync = typeof saved.lastSync === 'number' ? saved.lastSync : null;
     if (saved.prefs && typeof saved.prefs === 'object'){
       prefs.sound = saved.prefs.sound !== false; prefs.read = saved.prefs.read === true;
