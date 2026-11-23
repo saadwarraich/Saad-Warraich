@@ -287,6 +287,23 @@ button:disabled{cursor:default}
 .play.stretch .prompt::before{content:"\2605  Challenge";display:block;margin-bottom:2px;font-size:14px;font-weight:700;letter-spacing:.6px;color:var(--sun)}
 .stepnote{font-size:14.5px;line-height:1.35;color:var(--mint)}
 
+/* secret codes: four dots and a number pad */
+#lock h2{font-size:34px;line-height:1.15}
+#lock .who{justify-content:center;max-width:460px}
+.dots{display:flex;align-items:center;justify-content:center;gap:14px;min-height:34px;font-size:32px;font-weight:700;letter-spacing:3px;font-variant-numeric:tabular-nums}
+.dots i{width:20px;height:20px;border-radius:50%;border:3px solid var(--chalk)}
+.dots i.on{background:var(--sun);border-color:var(--sun)}
+.lockMsg{min-height:1.4em;font-weight:700;color:var(--rose);max-width:20em}
+.pad{display:grid;grid-template-columns:repeat(3,78px);gap:10px;justify-content:center}
+.pad button{appearance:none;height:64px;padding:0;border-radius:17px 21px 16px 23px/21px 16px 23px 17px;border:3px solid var(--chalk);background:var(--slab);color:var(--chalk);font-size:30px;font-weight:700}
+.pad button:active:not(:disabled){transform:scale(.94)}
+.pad button:disabled{opacity:.32}
+.pad button.soft{border-color:var(--seam);font-size:18px}
+#lock.shake .dots{animation:shake .35s}
+.codes{display:flex;flex-direction:column;gap:6px;color:var(--dim)}
+.codes b{color:var(--chalk)}
+.hint.warn{color:var(--rose)}
+@media (max-height:700px){#lock{justify-content:flex-start;gap:9px}.pad{gap:8px}.pad button{height:52px}}
 @keyframes pop{0%{transform:scale(.2)}70%{transform:scale(1.2)}100%{transform:scale(1)}}
 @keyframes starpop{0%{transform:scale(0);opacity:0}70%{transform:scale(1.2);opacity:1}100%{transform:scale(1);opacity:1}}
 @keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
@@ -366,6 +383,10 @@ button:disabled{cursor:default}
   .lessonNote{font-size:18px}
   .play.stretch .prompt::before{font-size:18px}
   .stepnote{font-size:18px}
+  #lock h2{font-size:44px}
+  .pad{grid-template-columns:repeat(3,100px);gap:14px}
+  .pad button{height:84px;font-size:38px}
+  .pad button.soft{font-size:24px}
 }
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
 </style>
@@ -479,6 +500,20 @@ button:disabled{cursor:default}
     </div>
   </section>
 
+  <section id="lock" class="screen fin" hidden>
+    <h2 id="lockTitle"></h2>
+    <p id="lockLine" class="doneLine"></p>
+    <div class="who" id="lockWho" role="group" aria-label="Who is playing"></div>
+    <div id="lockDots" class="dots" role="img"></div>
+    <p id="lockMsg" class="lockMsg" role="status"></p>
+    <div id="lockPad" class="pad"></div>
+    <div class="doneBtns">
+      <button id="lockMom" class="plain" type="button">For grown-ups</button>
+      <button id="lockForgot" class="link" type="button" hidden>I forgot the grown-up code</button>
+      <button id="lockBack" class="plain" type="button">Back</button>
+    </div>
+  </section>
+
   <section id="mom" class="screen mom" hidden>
     <header class="bar">
       <button id="momBack" class="icon" type="button" aria-label="Back to the games">
@@ -543,15 +578,32 @@ const LITTLE_E = [
   {id:'lword', n:1, name:'Words', sub:'Find the picture', col:'sky'},
   {id:'labc', n:2, name:'Letters', sub:'Find the same one', col:'rose'}
 ];
+// Older kids (Grade 3 and up): seven number games, each with one level for every grade from 3 to 7.
+const UPPER = [
+  {id:'uplus', n:1, name:'Add & Subtract', sub:'Big numbers, decimals, below zero', col:'sun'},
+  {id:'utimes', n:2, name:'Times', sub:'Multiply', col:'sky'},
+  {id:'udiv', n:3, name:'Divide', sub:'Share it out', col:'rose'},
+  {id:'ufrac', n:4, name:'Fractions', sub:'Parts, percents, ratios', col:'mint'},
+  {id:'usense', n:5, name:'Number Sense', sub:'Rounding, order, powers', col:'sun'},
+  {id:'ufind', n:6, name:'Equations', sub:'Find the missing number', col:'sky'},
+  {id:'uword', n:7, name:'Word Problems', sub:'Read, think, solve', col:'rose'}
+];
 // Each English level belongs to a school year (g), the same way the number levels do.
 const EL = {
   eabc:{g:[0, 0, 0, 1], label:['big and small letters, the easy ones', 'big and small letters, all of them', 'which letter comes next', 'the missing letter']},
   esound:{g:[0, 0, 1, 1], label:['the first letter of a word', 'the last letter of a word', 'sh, ch and th', 'two letters at the start (fr, st, cl)']},
   eread:{g:[0, 1, 1, 2], label:['short words to pictures', 'short words that look alike', 'longer words (ship, frog, train)', 'words with a silent e (cake, bike)']},
   espell:{g:[0, 0, 1, 1], label:['the first letter', 'the last letter', 'the middle vowel', 'two missing letters (sh, ch, fr)']},
-  esent:{g:[0, 1, 1, 2], label:['finish a sentence with a picture', 'the little word that fits', 'capital letters and end marks', 'question marks, and more than one']}
+  esent:{g:[0, 1, 1, 2], label:['finish a sentence with a picture', 'the little word that fits', 'capital letters and end marks', 'question marks, and more than one']},
+  uplus:{g:[3, 4, 5, 6, 7], label:['three-digit numbers', 'four- and five-digit numbers', 'decimals to hundredths', 'decimals to thousandths', 'negative numbers']},
+  utimes:{g:[3, 4, 5, 6, 7], label:['times tables to 10 × 10', 'one digit times bigger numbers', 'two digits times bigger numbers', 'decimals', 'negative numbers']},
+  udiv:{g:[3, 4, 5, 6, 7], label:['division facts', 'division with a remainder', 'dividing by two-digit numbers', 'decimals', 'negative numbers']},
+  ufrac:{g:[3, 4, 5, 6, 7], label:['comparing fractions, equal fractions', 'same bottom number, a fraction of a number', 'different bottom numbers', 'multiplying and dividing fractions, percents', 'proportions and percent change']},
+  usense:{g:[3, 4, 5, 6, 7], label:['rounding to 10 and 100', 'place value, rounding to 1,000', 'order of operations', 'powers, common factors and multiples', 'order of operations with negatives']},
+  ufind:{g:[3, 4, 5, 6, 7], label:['the missing number in a fact', 'two steps', 'brackets and number patterns', 'one-step equations with x', 'two-step equations, negative numbers']},
+  uword:{g:[3, 4, 5, 6, 7], label:['one step: times or divide', 'two steps', 'money and decimals', 'percents and rates', 'proportions and percent change']}
 };
-BIG.concat(LITTLE, ENG, LITTLE_E).forEach(G => { BYID[G.id] = G; });
+BIG.concat(LITTLE, ENG, LITTLE_E, UPPER).forEach(G => { BYID[G.id] = G; });
 // Every level belongs to a school year (g): 0 Kindergarten, 1 Grade 1, 2 Grade 2. Below zero: -1 Pre-K, -2 age 3, -3 age 2.
 const LEVELS = [null,
   {max:5, pics:true, g:0, label:'to 5, with pictures'},
@@ -570,7 +622,9 @@ const LLABEL = {
   lword:['two pictures', 'three pictures', 'four pictures'],
   labc:['two letters', 'three letters', 'four letters, some look alike']
 };
-const TOP_GRADE = 2; // the hardest work built so far is Grade 2
+const KINDS = ['little', 'big', 'upper']; // the three sets of number games
+const isUpper = id => UPPER.some(G => G.id === id);
+const okHash = h => typeof h === 'string' && /^[0-9a-z]{1,16}$/.test(h); // a scrambled secret code
 const isLittle = id => !!LLABEL[id];
 const maxLevel = id => (isLittle(id) ? 3 : EL[id] ? EL[id].g.length : 6);
 const levelLabel = (id, lv) => (isLittle(id) ? LLABEL[id][lv - 1] : EL[id] ? EL[id].label[lv - 1] : LEVELS[lv].label);
@@ -777,6 +831,48 @@ function eq0(o, right, wrong, how){
   if (!o.showText) o.showText = how === 'pic' || how === 'row' ? 'It is this one. Tap it.' : 'It is ' + right + '. Tap it.';
   if (!o.hint1) o.hint1 = 'Not that one. Look again.';
   return q0(o);
+}
+// A short, steady code for a piece of text: used to tell questions apart, and to scramble secret codes.
+function hash36(t){
+  let h1 = 0xdeadbeef, h2 = 0x41c6ce57;
+  for (let i = 0; i < t.length; i++){ const c = t.charCodeAt(i); h1 = Math.imul(h1 ^ c, 2654435761); h2 = Math.imul(h2 ^ c, 1597334677); }
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+  return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(36);
+}
+// Numbers the way older kids see them: a real minus sign, commas in thousands, no stray decimals.
+const nf = n => { n = Math.round(n * 1000) / 1000; const t = String(Math.abs(n)).split('.'); return (n < 0 ? MINUS : '') + t[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',') + (t[1] ? '.' + t[1] : ''); };
+const par = n => (n < 0 ? '(' + nf(n) + ')' : nf(n));
+const money = c => '$' + (c / 100).toFixed(2);
+const gcd = (a, b) => (b ? gcd(b, a % b) : Math.abs(a));
+const frac = (a, b) => { const g = gcd(a, b) || 1; return b / g === 1 ? String(a / g) : a / g + '/' + b / g; };
+const coprime = d => { let n; do { n = rnd(1, d - 1); } while (gcd(n, d) > 1); return n; };
+const aloud = t => t.replace(/×/g, ' times ').replace(/÷/g, ' divided by ').replace(/−/g, ' minus ').replace(/=/g, ' equals ').replace(/\?/g, ' what ').replace(/²/g, ' squared ').replace(/³/g, ' cubed ');
+// Three wrong answers as text: the likely slips first, then near misses. None repeats, none equals the right one.
+function slips(right, list, show, below, spare){
+  const f = show || nf, isN = typeof right === 'number', r = isN ? f(right) : right, out = [];
+  const take = v => {
+    if (typeof v === 'number' && (!Number.isFinite(v) || (v < 0 && !below && !(isN && right < 0)))) return;
+    const t = typeof v === 'number' ? f(v) : v;
+    if (t && t !== r && out.indexOf(t) < 0 && out.length < 3) out.push(t);
+  };
+  list.forEach(take);
+  const more = spare || (isN ? i => right + (i % 2 ? (i + 1) / 2 : -i / 2) : null);
+  for (let i = 1; more && out.length < 3 && i < 40; i++) take(more(i));
+  return out;
+}
+// Short answers sit two by two, longer ones in smaller letters, the longest one to a row.
+const fitHow = all => { const m = Math.max.apply(null, all.map(t => t.length)); return m <= 6 ? 'text' : m <= 10 ? 'word' : 'row'; };
+// A sum to work out: the line shown, the right answer, the wrong ones.
+function sumQ(id, level, line, right, wrong, o){
+  const r = typeof right === 'number' ? nf(right) : right, ask = (o && o.prompt) || 'What is the answer?', done = (o && o.eqDone) || line.replace('?', r);
+  return eq0(Object.assign({game:id, level, key:id + level + hash36(line), eq:line, sent:line.length > 13, say:ask + ' ' + aloud(line), yes:'Yes! ' + done, tip:'Use paper if it helps.', hint1:'Not that one. Check it again.'}, o || {}, {prompt:ask, eqDone:done}),
+    r, wrong, fitHow([r].concat(wrong)));
+}
+// A question in words.
+function asked(id, level, text, right, wrong){
+  return eq0({game:id, level, key:id + level + hash36(text + '|' + right), prompt:text, long:text.length > 44, say:text, yes:'Yes! The answer is ' + right + '.', tip:'Read it twice. Use paper if it helps.', hint1:'Not that one. Read it again.'},
+    right, wrong, fitHow([right].concat(wrong)));
 }
 function fit(level, biggest){ return biggest > LEVELS[level].max ? (biggest > 10 ? 4 : 2) : level; }
 
@@ -1149,6 +1245,268 @@ const gen = {
     const U = pick(ABC), alike = (BIGALIKE[U] || '').split(''), far = shuffle(ABC.filter(x => x !== U && alike.indexOf(x) < 0));
     return eq0({game:'labc', little:true, gentle:true, level, key:'same' + U, show:{text:U}, prompt:'Find the same letter.', say:'This is ' + U + '. Find the same letter.', yes:'Yes! That is ' + U + '.',
       tip:'Look at its shape.', showText:'This one is the same. Tap it.'}, U, level === 3 ? shuffle(alike).slice(0, 1).concat(far).slice(0, 3) : far.slice(0, level), 'text');
+  },
+
+  /* older kids: Level 1 is Grade 3 work, Level 5 is Grade 7 work */
+  uplus(level){
+    const add = Math.random() < 0.5, m = ' ' + MINUS + ' ', op = add ? ' + ' : m;
+    let a, b;
+    if (level <= 2){
+      if (level === 1){ a = rnd(100, 899); b = add ? rnd(100, 999 - a) : rnd(100, 899); }
+      else { a = rnd(1000, 49999); b = rnd(1000, 49999); }
+      if (!add && b > a){ const t = a; a = b; b = t; }
+      if (!add && a === b) a += rnd(11, 99);
+      const r = add ? a + b : a - b;
+      return sumQ('uplus', level, nf(a) + op + nf(b) + ' = ?', r, slips(r, [r + 10, r - 10, r + 100, r - 100]));
+    }
+    if (level <= 4){
+      // The places must be lined up: hundredths with tenths (Grade 5), thousandths with tenths or hundredths (Grade 6).
+      const k = level === 3 ? 100 : 1000, unit = level === 3 || Math.random() < 0.5 ? k / 10 : k / 100;
+      let x, t;
+      do { x = rnd(k + 1, 20 * k - 1); } while (x % 10 === 0);
+      do { t = rnd(11, 20 * k / unit - 1); } while (t % 10 === 0);
+      const y = t * unit, hi = Math.max(x, y), lo = Math.min(x, y), r = add ? x + y : hi - lo;
+      return sumQ('uplus', level, nf((add ? x : hi) / k) + op + nf((add ? y : lo) / k) + ' = ?', r / k, slips(r / k, [Math.abs(add ? x + t : x - t) / k, (r + k / 10) / k, (r - k / 10) / k, (r + k) / k, (r - k) / k]));
+    }
+    a = rnd(2, 20); b = rnd(2, 20);
+    const k = rnd(0, 4);
+    if (k === 0) return sumQ('uplus', 5, nf(-a) + ' + ' + b + ' = ?', b - a, slips(b - a, [a + b, -(a + b), a - b], nf, true));
+    if (k === 1){ if (b <= a) b = a + rnd(1, 9); return sumQ('uplus', 5, a + m + b + ' = ?', a - b, slips(a - b, [b - a, a + b, -(a + b)], nf, true)); }
+    if (k === 2) return sumQ('uplus', 5, nf(-a) + m + b + ' = ?', -a - b, slips(-a - b, [a + b, b - a, a - b], nf, true));
+    if (k === 3) return sumQ('uplus', 5, a + m + par(-b) + ' = ?', a + b, slips(a + b, [a - b, b - a, -(a + b)], nf, true));
+    return sumQ('uplus', 5, nf(-a) + m + par(-b) + ' = ?', b - a, slips(b - a, [-(a + b), a - b, a + b], nf, true));
+  },
+  utimes(level){
+    let a, b;
+    if (level === 1){ a = rnd(2, 10); b = rnd(2, 10); return sumQ('utimes', 1, a + ' × ' + b + ' = ?', a * b, slips(a * b, [a * (b + 1), (a - 1) * b, a * b + 10, (a + 1) * b])); }
+    if (level === 2){
+      a = Math.random() < 0.5 ? rnd(12, 99) : rnd(101, 999); b = rnd(3, 9);
+      return sumQ('utimes', 2, a + ' × ' + b + ' = ?', a * b, slips(a * b, [a * b + b, a * b - b, a * b + 10 * b, a * b - 10]));
+    }
+    if (level === 3){
+      a = Math.random() < 0.5 ? rnd(11, 99) : rnd(101, 399); b = rnd(11, 39); if (b % 10 === 0) b++;
+      return sumQ('utimes', 3, a + ' × ' + b + ' = ?', a * b, slips(a * b, [a * (onesOf(b) + tensOf(b)), a * b + a, a * b - a, a * b + 10 * a]));
+    }
+    if (level === 4){
+      const k = rnd(0, 2);
+      if (k === 0){ a = rnd(11, 99); if (a % 10 === 0) a++; b = rnd(2, 9); return sumQ('utimes', 4, nf(a / 10) + ' × ' + b + ' = ?', a * b / 10, slips(a * b / 10, [a * b, a * b / 100, (a * b + 10) / 10, (a * b - b) / 10])); }
+      if (k === 1){ a = rnd(2, 9); b = rnd(2, 9); return sumQ('utimes', 4, nf(a / 10) + ' × ' + nf(b / 10) + ' = ?', a * b / 100, slips(a * b / 100, [a * b / 10, a * b, a * b / 1000, (a + b) / 10])); }
+      a = rnd(101, 9999); if (a % 10 === 0) a++; b = pick([10, 100, 1000]);
+      return sumQ('utimes', 4, nf(a / 100) + ' × ' + nf(b) + ' = ?', a * b / 100, slips(a * b / 100, [a * b / 10, a * b / 1000, a / 100 + b, a * b / 10000]));
+    }
+    a = rnd(2, 12) * pick([1, -1]); b = rnd(2, 12) * (a > 0 ? -1 : pick([1, -1]));
+    return sumQ('utimes', 5, nf(a) + ' × ' + par(b) + ' = ?', a * b, slips(a * b, [-a * b, a * b + Math.abs(a), -a * b - Math.abs(b), a + b], nf, true));
+  },
+  udiv(level){
+    let d, q, n, a, b;
+    if (level === 1){ d = rnd(2, 10); q = rnd(2, 10); return sumQ('udiv', 1, d * q + ' ÷ ' + d + ' = ?', q, slips(q, [q + 1, q - 1, d, q + 2])); }
+    if (level === 2){
+      d = rnd(3, 9); do { n = Math.random() < 0.6 ? rnd(20, 99) : rnd(100, 499); } while (n % d === 0);
+      q = Math.floor(n / d); const left = n % d, R = (x, y) => x + ' r ' + y;
+      return sumQ('udiv', 2, n + ' ÷ ' + d + ' = ?', R(q, left), [R(q + 1, left), R(q - 1, left), R(q, left > 1 ? left - 1 : left + 1)], {prompt:'Divide. The r shows what is left over.'});
+    }
+    if (level === 3){ d = rnd(11, 25); if (d === 20) d = 21; q = rnd(12, 49); return sumQ('udiv', 3, nf(d * q) + ' ÷ ' + d + ' = ?', q, slips(q, [q + 10, q - 10, q + 1, q - 1])); }
+    if (level === 4){
+      const k = rnd(0, 2);
+      if (k === 0){ d = rnd(2, 9); q = rnd(11, 99); if (q % 10 === 0) q++; return sumQ('udiv', 4, nf(d * q / 10) + ' ÷ ' + d + ' = ?', q / 10, slips(q / 10, [q, q / 100, (q + 1) / 10, (q - 1) / 10])); }
+      if (k === 1){
+        const pr = pick([[1, 2], [1, 4], [3, 4], [1, 5], [2, 5], [3, 5], [1, 8], [3, 8], [7, 8], [3, 2], [5, 4], [7, 5], [9, 4], [7, 2]]), v = pr[0] / pr[1];
+        return sumQ('udiv', 4, pr[0] + ' ÷ ' + pr[1] + ' = ?', v, slips(v, [v * 10, v / 10, (pr[0] * 10 + pr[1]) / 100, v + 0.1]));
+      }
+      a = rnd(11, 9999); if (a % 10 === 0) a++; b = pick([10, 100]);
+      return sumQ('udiv', 4, nf(a / 10) + ' ÷ ' + b + ' = ?', a / 10 / b, slips(a / 10 / b, [a / b, a * 10 / b, a / 10 * b, a / 10]));
+    }
+    d = rnd(2, 12) * pick([1, -1]); q = rnd(2, 12) * (d > 0 ? -1 : pick([1, -1]));
+    return sumQ('udiv', 5, nf(d * q) + ' ÷ ' + par(d) + ' = ?', q, slips(q, [-q, q + 1, -q - 1, q - 1], nf, true));
+  },
+  ufrac(level){
+    const m = ' ' + MINUS + ' ', simple = {prompt:'Give the answer in its simplest form.'};
+    if (level === 1){
+      const k = rnd(0, 3);
+      if (k === 0){
+        // the same bottom number: the bigger top is the bigger fraction
+        const d = pick([6, 8, 10, 12]), tops = shuffle(Array.from({length:d - 1}, (_, i) => i + 1)).slice(0, 4), big = Math.random() < 0.5, r = (big ? Math.max : Math.min).apply(null, tops);
+        return asked('ufrac', 1, 'Which is the ' + (big ? 'biggest' : 'smallest') + '?', r + '/' + d, tops.filter(t => t !== r).map(t => t + '/' + d));
+      }
+      if (k === 1){
+        // one part each: the bigger the bottom number, the smaller the part
+        const ds = shuffle([2, 3, 4, 5, 6, 8, 10, 12]).slice(0, 4), big = Math.random() < 0.5, r = (big ? Math.min : Math.max).apply(null, ds);
+        return asked('ufrac', 1, 'Which is the ' + (big ? 'biggest' : 'smallest') + '?', '1/' + r, ds.filter(t => t !== r).map(t => '1/' + t));
+      }
+      if (k === 2){
+        const pr = pick([[1, 2], [1, 3], [2, 3], [1, 4], [3, 4]]), t = rnd(2, pr[1] === 2 ? 6 : 4), n = pr[0] * t;
+        return sumQ('ufrac', 1, pr[0] + '/' + pr[1] + ' = ?/' + pr[1] * t, n, slips(n, [pr[0], pr[0] + t, pr[1] * t - pr[0], t]), {prompt:'Make the fractions equal.'});
+      }
+      const b = pick([2, 3, 4, 5, 6, 8, 10]), c = b * rnd(2, 9);
+      return sumQ('ufrac', 1, '1/' + b + ' of ' + c + ' = ?', c / b, slips(c / b, [c - b, c / b + 1, c / b - 1, b]));
+    }
+    if (level === 2){
+      if (Math.random() < 0.6){
+        const d = pick([5, 6, 7, 8, 9, 10, 11, 12]), add = Math.random() < 0.5, R = t => t + '/' + d;
+        let a = rnd(1, d - 2), b = rnd(1, d - 1 - a);
+        if (!add){ const t = a + b; b = a; a = t; }
+        const top = add ? a + b : a - b;
+        return sumQ('ufrac', 2, R(a) + (add ? ' + ' : m) + R(b) + ' = ?', R(top), slips(R(top), [add ? top + '/' + 2 * d : R(a + b), R(top + 1), top > 1 ? R(top - 1) : R(top + 2)], null, false, i => R(top + 2 + i)));
+      }
+      const b = pick([3, 4, 5, 6, 8, 10]); let a = rnd(2, b - 1); while (gcd(a, b) > 1) a--;
+      const c = b * rnd(2, 9), r = a * c / b;
+      return sumQ('ufrac', 2, a + '/' + b + ' of ' + c + ' = ?', r, slips(r, [c / b, c - r, a * c, r + c / b]));
+    }
+    if (level === 3){
+      const pr = pick([[2, 3], [2, 4], [3, 4], [2, 5], [3, 6], [4, 8], [2, 6], [3, 5], [4, 6], [5, 10], [2, 8], [3, 9], [4, 5]]), add = Math.random() < 0.5;
+      let d1 = pr[0], d2 = pr[1]; if (Math.random() < 0.5){ d1 = pr[1]; d2 = pr[0]; }
+      let n1 = coprime(d1), n2 = coprime(d2);
+      if (!add && n1 * d2 < n2 * d1){ let t = n1; n1 = n2; n2 = t; t = d1; d1 = d2; d2 = t; }
+      const top = add ? n1 * d2 + n2 * d1 : n1 * d2 - n2 * d1, den = d1 * d2;
+      if (top <= 0 || top > den) return gen.ufrac(3);
+      const r = frac(top, den), slip = add ? frac(n1 + n2, d1 + d2) : frac(Math.abs(n1 - n2) || 1, Math.max(d1, d2));
+      return sumQ('ufrac', 3, n1 + '/' + d1 + (add ? ' + ' : m) + n2 + '/' + d2 + ' = ?', r, slips(r, [slip, frac(top + 1, den), frac(n1 + n2, den)], null, false, i => frac(top + 1 + i, den)), simple);
+    }
+    if (level === 4){
+      const k = rnd(0, 2);
+      if (k === 2){
+        const pc = pick([10, 20, 25, 50, 75]), n = pick([20, 40, 60, 80, 120, 200]), r = pc * n / 100;
+        return sumQ('ufrac', 4, pc + '% of ' + n + ' = ?', r, slips(r, [n - r, pc * n / 10, r + 10, r + 5]));
+      }
+      const b = rnd(2, 6), a = coprime(b), d = rnd(2, 6), c = coprime(d), r = k === 0 ? frac(a * c, b * d) : frac(a * d, b * c);
+      return sumQ('ufrac', 4, a + '/' + b + (k === 0 ? ' × ' : ' ÷ ') + c + '/' + d + ' = ?', r, slips(r, [k === 0 ? frac(a * d, b * c) : frac(a * c, b * d), frac(a + c, b + d), frac(b * c, a * d)], null, false, i => frac(a * c + i, b * d)), simple);
+    }
+    const k = rnd(0, 3);
+    if (k === 0){
+      const a = rnd(2, 6), c = rnd(2, 7); let b = rnd(2, 9); if (b === a) b++;
+      return sumQ('ufrac', 5, a + ' : ' + b + ' = ' + a * c + ' : ?', b * c, slips(b * c, [b + a * c - a, b + c, a * c, b * c + b]), {prompt:'Keep the ratio the same.'});
+    }
+    if (k === 1){
+      let b, pc, a; do { b = pick([20, 25, 40, 50, 80, 200]); pc = pick([10, 20, 25, 30, 40, 50, 60, 75]); a = b * pc / 100; } while (a % 1);
+      return sumQ('ufrac', 5, '?% of ' + b + ' = ' + a, pc, slips(pc, [100 - pc, a, Math.round(b / a), pc + 10]), {prompt:'What percent?'});
+    }
+    if (k === 2){
+      const n = pick([20, 40, 60, 80, 120]), pc = pick([10, 20, 25, 50]), up = Math.random() < 0.5, r = n * (100 + (up ? pc : -pc)) / 100;
+      return asked('ufrac', 5, n + (up ? ' goes up by ' : ' goes down by ') + pc + '%. What is the new number?', nf(r), slips(r, [n * pc / 100, up ? n + pc : n - pc, n * (100 + (up ? -pc : pc)) / 100]));
+    }
+    const d = rnd(3, 9), n = coprime(d), t = rnd(2, 6);
+    return sumQ('ufrac', 5, 'x/' + d * t + ' = ' + n + '/' + d, n * t, slips(n * t, [n + d * t - d, n * t + t, d * t - n, n]), {prompt:'What is x?', eqDone:'x = ' + n * t});
+  },
+  usense(level){
+    let a = rnd(2, 9), b = rnd(2, 9), c = rnd(2, 9);
+    const m = ' ' + MINUS + ' ';
+    if (level === 1){
+      const to = pick([10, 100]), o = 110 - to; let n; do { n = rnd(112, 988); } while (n % to === 0);
+      const r = Math.round(n / to) * to;
+      return asked('usense', 1, 'Round ' + n + ' to the nearest ' + to + '.', nf(r), slips(r, [r > n ? r - to : r + to, Math.round(n / o) * o, Math.floor(n / o) * o, Math.ceil(n / o) * o], nf, false, i => r + (i + 1) * to));
+    }
+    if (level === 2){
+      if (Math.random() < 0.5){
+        let n; do { n = rnd(1120, 98800); } while (n % 1000 === 0);
+        const r = Math.round(n / 1000) * 1000;
+        return asked('usense', 2, 'Round ' + nf(n) + ' to the nearest 1,000.', nf(r), slips(r, [r > n ? r - 1000 : r + 1000, Math.round(n / 100) * 100, Math.round(n / 10000) * 10000 || 10000], nf, false, i => r + (i + 1) * 1000));
+      }
+      const ds = shuffle([1, 2, 3, 4, 5, 6, 7, 8, 9]).slice(0, 5), at = rnd(0, 3), r = ds[at] * Math.pow(10, 4 - at);
+      return asked('usense', 2, 'What is the value of the ' + ds[at] + ' in ' + nf(+ds.join('')) + '?', nf(r), slips(r, [r * 10, r / 10, ds[at], r / 100 >= 1 ? r / 100 : r * 100]));
+    }
+    if (level === 3){
+      const k = rnd(0, 4);
+      if (k === 0) return sumQ('usense', 3, a + ' + ' + b + ' × ' + c + ' = ?', a + b * c, slips(a + b * c, [(a + b) * c, a * b + c, a + b + c]));
+      if (k === 1) return sumQ('usense', 3, '(' + a + ' + ' + b + ') × ' + c + ' = ?', (a + b) * c, slips((a + b) * c, [a + b * c, a * c + b, a + b + c]));
+      if (k === 2) return sumQ('usense', 3, (a * b + c + 10) + m + a + ' × ' + b + ' = ?', c + 10, slips(c + 10, [(a * b + c + 10 - a) * b, c, c + 10 + a]));
+      if (k === 3) return sumQ('usense', 3, a + ' + ' + b * c + ' ÷ ' + c + ' = ?', a + b, slips(a + b, [(a + b * c) % c === 0 ? (a + b * c) / c : a + c, a + b * c, b]));
+      const d = rnd(1, 7);
+      return sumQ('usense', 3, a + ' × (' + b + ' + ' + c + ')' + m + d + ' = ?', a * (b + c) - d, slips(a * (b + c) - d, [a * b + c - d, a * (b + c) + d, a * (b + c - d)]));
+    }
+    if (level === 4){
+      const k = rnd(0, 4);
+      if (k === 0){ a = rnd(2, 12); return sumQ('usense', 4, a + '² = ?', a * a, slips(a * a, [a * 2, a * a + a, a * a - a])); }
+      if (k === 1){ a = rnd(2, 5); return sumQ('usense', 4, a + '³ = ?', a * a * a, slips(a * a * a, [a * 3, a * a, a * a * a + a])); }
+      if (k === 2) return sumQ('usense', 4, a + '² + ' + b + ' × ' + c + ' = ?', a * a + b * c, slips(a * a + b * c, [(a * a + b) * c, a * 2 + b * c, a * a + b + c]));
+      if (k === 3){
+        const g = pick([2, 3, 4, 5, 6, 8, 9, 10, 12]), pq = pick([[2, 3], [2, 5], [3, 4], [3, 5], [2, 7], [4, 5], [3, 7], [5, 6], [4, 7], [5, 7]]), x = g * pq[0], y = g * pq[1];
+        return asked('usense', 4, 'What is the greatest common factor of ' + x + ' and ' + y + '?', String(g), slips(g, [g % 2 === 0 ? g / 2 : g > 3 && g % 3 === 0 ? g / 3 : 1, g * 2, g * 3, x]));
+      }
+      const x = rnd(2, 12); let y = rnd(2, 12); if (y === x) y = x === 12 ? 8 : x + 1;
+      const l = x * y / gcd(x, y);
+      return asked('usense', 4, 'What is the least common multiple of ' + x + ' and ' + y + '?', String(l), slips(l, [x * y, gcd(x, y), l * 2, x + y]));
+    }
+    const k = rnd(0, 3);
+    if (k === 0) return sumQ('usense', 5, nf(-a) + ' + ' + b + ' × ' + par(-c) + ' = ?', -a - b * c, slips(-a - b * c, [(b - a) * -c, b * c - a, a + b * c, a - b * c], nf, true));
+    if (k === 1) return sumQ('usense', 5, par(-a) + '² = ?', a * a, slips(a * a, [-a * a, -2 * a, 2 * a], nf, true));
+    if (k === 2) return sumQ('usense', 5, a + m + b + ' × ' + (c + 2) + ' = ?', a - b * (c + 2), slips(a - b * (c + 2), [(a - b) * (c + 2), b * (c + 2) - a, a + b * (c + 2)], nf, true));
+    return sumQ('usense', 5, par(-a) + ' × ' + b + m + c + ' = ?', -a * b - c, slips(-a * b - c, [c - a * b, a * b - c, -a * (b - c), a * b + c], nf, true));
+  },
+  ufind(level){
+    const a = rnd(2, 9), b = rnd(2, 9), x = rnd(2, 10), m = ' ' + MINUS + ' ';
+    const miss = (line, right, wrong, ask) => sumQ('ufind', level, line, right, slips(right, wrong), {prompt:ask || 'What number is missing?'});
+    const eqn = (line, right, wrong) => sumQ('ufind', level, line, right, slips(right, wrong, nf, level === 5), {prompt:'What is x?', eqDone:'x = ' + nf(right)});
+    if (level === 1){
+      const k = rnd(0, 2);
+      if (k === 0) return miss('? × ' + a + ' = ' + a * x, x, [x + 1, x - 1, a, x + 2]);
+      if (k === 1) return miss(a * x + ' ÷ ? = ' + x, a, [a + 1, a - 1, x, a + 2]);
+      return miss('? ÷ ' + a + ' = ' + x, a * x, [a * x + a, a * x - a, x, a + x]);
+    }
+    if (level === 2){
+      const k = rnd(0, 2), less = rnd(1, Math.min(9, a * x - 1));
+      if (k === 0) return miss(a + ' × ? + ' + b + ' = ' + (a * x + b), x, [x + 1, x - 1, x + b, x + 2]);
+      if (k === 1) return miss(a + ' × ?' + m + less + ' = ' + (a * x - less), x, [x + 1, x - 1, x + 2, x + 3]);
+      return miss('? ÷ ' + a + ' + ' + b + ' = ' + (x + b), a * x, [a * (x + b), a * x + a, a * x - a, x]);
+    }
+    if (level === 3){
+      const k = rnd(0, 3);
+      if (k === 0) return miss('(? + ' + b + ') × ' + a + ' = ' + a * (x + b), x, [x + b, x + 1, x - 1, x + 2]);
+      if (k === 1) return miss(a + ' × (?' + m + b + ') = ' + a * x, x + b, [x, x + b + 1, x + b - 1, a * x + b]);
+      if (k === 2){
+        const up = Math.random() < 0.5, d = rnd(3, 12) * (up ? 1 : -1), s0 = up ? rnd(2, 30) : rnd(60, 99), t = i => s0 + d * i;
+        return miss([0, 1, 2, 3].map(t).join(', ') + ', ?', t(4), [t(5), t(4) + 1, t(4) - 1, t(4) + 10], 'What comes next?');
+      }
+      const by = pick([2, 3]), s0 = rnd(1, by === 2 ? 5 : 3), t = i => s0 * Math.pow(by, i);
+      return miss([0, 1, 2, 3].map(t).join(', ') + ', ?', t(4), [2 * t(3) - t(2), t(4) + by, t(3) + by, t(3) * (by + 1)], 'What comes next?');
+    }
+    if (level === 4){
+      const k = rnd(0, 4), n = rnd(11, 60), v = a * b;
+      if (k === 0) return eqn('x + ' + n + ' = ' + (n + v), v, [n + n + v, v + 10, v - 1, v + 1]);
+      if (k === 1) return eqn('x' + m + n + ' = ' + v, n + v, [Math.abs(v - n) || 1, n + v + 10, n + v - 1]);
+      if (k === 2) return eqn(a + 'x = ' + a * x, x, [a * x - a, x + 1, x - 1, a * x * a]);
+      if (k === 3) return eqn('x ÷ ' + a + ' = ' + x, a * x, [x, a * x + a, a + x]);
+      return asked('ufind', 4, 'If x = ' + x + ', what is ' + a + 'x + ' + b + '?', nf(a * x + b), slips(a * x + b, [a * 10 + x + b, a + x + b, a * (x + b)]));
+    }
+    // Grade 7: two steps, and answers below zero
+    const k = rnd(0, 4), z = rnd(1, 9) * pick([1, -1, -1]);
+    if (k === 0) return eqn(a + 'x + ' + b + ' = ' + nf(a * z + b), z, [-z, z + 1, z - 1, z + b]);
+    if (k === 1) return eqn(a + 'x' + m + b + ' = ' + nf(a * z - b), z, [-z, z + 1, z - 1, z - b]);
+    if (k === 2) return eqn(a + '(x + ' + b + ') = ' + nf(a * (z + b)), z, [-z, z + b, z + 1, z - 1]);
+    if (k === 3) return eqn(nf(-a) + 'x = ' + nf(-a * z), z, [-z, z + 1, z - 1, a * z]);
+    return eqn(b + m + 'x = ' + nf(b - z), z, [-z, b + b - z, z + 1, z - 1]);
+  },
+  uword(level){
+    const A = rnd(3, 9), B = rnd(3, 9), C = rnd(11, 29), who = pick(['Sam', 'Mia', 'Leo', 'Ana', 'Zoe', 'Ben']), k = rnd(0, 2);
+    const w = (text, right, wrong, show) => asked('uword', level, text, (show || nf)(right), slips(right, wrong, show || nf));
+    const dollars = n => '$' + nf(n);
+    if (level === 1){
+      if (k === 0) return w(A + ' bags hold ' + B + ' apples each. How many apples are there in all?', A * B, [A + B, A * B + A, A * B - B]);
+      if (k === 1) return w(A * B + ' stickers are shared equally by ' + A + ' friends. How many stickers does each friend get?', B, [A * B - A, B + 1, B - 1]);
+      return w('One ticket costs $' + A + '. How much do ' + B + ' tickets cost?', A * B, [A + B, A * B + A, A * B - B], dollars);
+    }
+    if (level === 2){
+      if (k === 0){ const stock = A * (B + 3), sold = Math.min(C, stock - rnd(2, 9)); return w('A shop has ' + A + ' boxes with ' + (B + 3) + ' pencils in each box. It sells ' + sold + ' pencils. How many pencils are left?', stock - sold, [stock + sold, stock, A + B + 3 + sold]); }
+      if (k === 1) return w(who + ' reads ' + (A + 6) + ' pages a day for ' + B + ' days. Then ' + who + ' reads ' + C + ' more pages. How many pages is that in all?', (A + 6) * B + C, [(A + 6) * B, (A + 6) * (B + C), A + 6 + B + C]);
+      const left = rnd(1, A - 1), T = (t, l) => t + ' teams, ' + l + ' left';
+      return asked('uword', 2, (A * B + left) + ' children make teams of ' + A + '. How many full teams are there, and how many children are left over?', T(B, left), [T(B + 1, left), T(B - 1, left), T(B, left + 1)]);
+    }
+    if (level === 3){
+      const a = rnd(11, 59) * 5 + 100, b = rnd(11, 39) * 5;
+      if (k === 0) return w('A notebook costs ' + money(a) + ' and a pen costs ' + money(b) + '. How much do they cost together?', a + b, [a + b + 100, a + b - 10, a - b, a + b + 10], money);
+      if (k === 1) return w(who + ' pays for a ' + money(a) + ' toy with a $5 bill. How much change does ' + who + ' get?', 500 - a, [600 - a, 490 - a, 510 - a, a - 100], money);
+      return w('One juice costs ' + money(b) + '. How much do ' + A + ' juices cost?', b * A, [b * A + b, b * A - b, b + A * 100, b * A + 100], money);
+    }
+    if (level === 4){
+      const n = pick([20, 40, 60, 80]);
+      if (k === 0){ const pc = pick([10, 20, 25, 30, 50]); return w('A jacket costs $' + n + '. It is ' + pc + '% off. What is the sale price?', n * (100 - pc) / 100, [n * pc / 100, n - pc, n * (100 + pc) / 100], dollars); }
+      if (k === 1){ const h = rnd(2, 6), sp = rnd(4, 13) * 5; return w('A car travels ' + sp * h + ' miles in ' + h + ' hours at a steady speed. How many miles does it travel each hour?', sp, [sp * h, sp + h, sp - 5, sp + 5]); }
+      const pc = pick([5, 10, 15, 25, 30, 45]);
+      return w('In a school club of ' + n + ' students, ' + pc + '% walk to school. How many students walk?', n * pc / 100, [n - n * pc / 100, pc, n * pc / 10, n * pc / 100 + 2]);
+    }
+    if (k === 0){ const each = rnd(3, 9) * 50, n = rnd(2, 4), more = n + rnd(1, 3); return w(n + ' notebooks cost ' + money(each * n) + '. At the same price each, how much do ' + more + ' notebooks cost?', each * more, [each * n + (more - n) * 100, each * more + each, each * n * more, each * more - each], money); }
+    if (k === 1){ const cups = rnd(2, 4), per = pick([6, 8, 12]), t = rnd(2, 5); return w('A recipe uses ' + cups + ' cups of flour for ' + per + ' cookies. How many cups are needed for ' + per * t + ' cookies?', cups * t, [cups + per * t - per, cups * t + cups, cups + t, per * t]); }
+    const n = pick([20, 40, 60, 80]), pc = pick([10, 20, 25, 50]);
+    return w('A game cost $' + n + ' last year. This year the price is ' + pc + '% higher. What is the new price?', n * (100 + pc) / 100, [n + pc, n * pc / 100, n * (100 - pc) / 100], dollars);
   }
 };
 
@@ -1365,13 +1723,13 @@ let dbDoc = null, pushing = false, cloud = 'wait', localOK = true, gen0 = 0, las
 // grade: the child's school year (0 Kindergarten, 1 Grade 1, -3 age 2) as of the school year that began in gy.
 function newPlayer(id, name, kind, grade, gy){
   const g = {}; Object.keys(BYID).forEach(k => { g[k] = {level:1, rounds:0, q:0, first:0, h:'', run:0, weak:0, s:0, dd:'', dn:0, dc:0, df:0, wd:0}; });
-  return {id, name, kind:kind === 'little' || kind === 'big' ? kind : 'auto', grade:Number.isFinite(grade) ? clamp(Math.round(grade), -3, 8) : 0, gy:Number.isFinite(gy) ? gy : schoolYear(), stars:0, games:g, facts:{}, days:{}, wk:{n:5, b:'', wins:[]}, pl:1};
+  return {id, name, kind:KINDS.indexOf(kind) >= 0 ? kind : 'auto', grade:Number.isFinite(grade) ? clamp(Math.round(grade), -3, 8) : 0, gy:Number.isFinite(gy) ? gy : schoolYear(), stars:0, games:g, facts:{}, days:{}, wk:{n:5, b:'', wins:[]}, pl:1, pw:''};
 }
 // Three players to start with: Grade 1, Kindergarten and age 2, as of fall 2026.
 // This copy sits at a public address, so it names nobody: a personal link (#kids=Name.grade,...) fills the names in.
 const FIRST = {p1:['Player 1', 1], p2:['Player 2', 0], p3:['Little one', -3]};
 const STAND_IN = {};
-function fresh(){ return {v:2, players:Object.keys(FIRST).map(id => placeFresh(newPlayer(id, FIRST[id][0], 'auto', FIRST[id][1], 2026))), picks:{}, updatedAt:0}; }
+function fresh(){ return {v:2, players:Object.keys(FIRST).map(id => placeFresh(newPlayer(id, FIRST[id][0], 'auto', FIRST[id][1], 2026))), picks:{}, lock:'', lr:0, updatedAt:0}; }
 state = fresh();
 function me(){ return state.players.find(p => p.id === prefs.player) || state.players[0]; }
 function byId(id){ return state.players.find(p => p.id === id) || null; }
@@ -1379,11 +1737,13 @@ function byId(id){ return state.players.find(p => p.id === id) || null; }
 function stageIn(P, sy){ return clamp(P.grade + (sy - P.gy), -3, 8); }
 function stageOf(P){ return stageIn(P, schoolYear()); }
 function littleDone(P){ return LITTLE.filter(G => P.games[G.id].level >= 3 && P.games[G.id].q >= 8).length >= 4; }
+// The same one grade up: a second grader with most number games at the top level moves on to the older kids' games.
+function bigDone(P){ return BIG.filter(G => P.games[G.id].level >= 6 && P.games[G.id].q >= 8).length >= 5; }
 // Little-kid games until Kindergarten, or from Pre-K once the little games are mastered. Mom can also fix it either way.
 function kindAt(P, sy){
-  if (P.kind === 'little' || P.kind === 'big') return P.kind;
+  if (KINDS.indexOf(P.kind) >= 0) return P.kind;
   const s = stageIn(P, sy);
-  return s >= 0 || (s === -1 && littleDone(P)) ? 'big' : 'little';
+  return s >= 3 || (s === 2 && bigDone(P)) ? 'upper' : s >= 0 || (s === -1 && littleDone(P)) ? 'big' : 'little';
 }
 function kindOf(P){ return kindAt(P, schoolYear()); }
 // Rounds that fill a day's box: the daily three for big kids, one for the little ones.
@@ -1405,8 +1765,9 @@ function checkWin(st, P, k){
   P.wk.wins.push({k:keyOfNum(mon), t:treatFor(st, mon), g:0, o:0});
   if (P.wk.wins.length > 12) P.wk.wins = P.wk.wins.slice(-12);
 }
-function gamesOf(P){ return kindOf(P) === 'little' ? LITTLE : BIG; }
-function engOf(P){ return kindOf(P) === 'little' ? LITTLE_E : ENG; }
+function gamesOf(P){ const k = kindOf(P); return k === 'little' ? LITTLE : k === 'upper' ? UPPER : BIG; }
+// English reaches Grade 2 work so far, so from Grade 3 on there are no English games yet.
+function engOf(P){ const k = kindOf(P); return k === 'little' ? LITTLE_E : k === 'big' || stageOf(P) <= 2 ? ENG : []; }
 
 function parseFact(k){
   let m;
@@ -1453,9 +1814,10 @@ function normPlayer(a, i){
   if (STAND_IN[id] === name) name = FIRST[id][0];
   const P = newPlayer(id, name, hasGrade ? a.kind : 'auto', grade, hasGrade ? num(a.gy, 2020, 2100) : 2026);
   P.stars = num(a.stars);
+  P.pw = a.pw === '-' || okHash(a.pw) ? a.pw : '';
   Object.keys(BYID).forEach(k => {
-    const s = a.games && a.games[k]; if (!s || typeof s !== 'object') return;
-    const b = P.games[k];
+    const s = a.games && a.games[k], b = P.games[k];
+    if (!s || typeof s !== 'object'){ if (isUpper(k)) b.level = startOf(k, P.grade); return; }
     b.level = num(s.level, 1, maxLevel(k)); b.rounds = num(s.rounds); b.q = num(s.q); b.first = Math.min(num(s.first), b.q);
     b.h = typeof s.h === 'string' ? s.h.replace(/[^01]/g, '').slice(-40) : ''; b.run = num(s.run, 0, 4); b.weak = num(s.weak, 0, 2);
     // The step (harder questions in a round), the day being counted, and that day's answers at this level.
@@ -1480,13 +1842,13 @@ function normPlayer(a, i){
 }
 function normalize(s){
   if (!s || typeof s !== 'object') return fresh();
-  const st = {v:2, players:[], picks:{}, updatedAt:num(s.updatedAt, 0, 9e15)};
+  const st = {v:2, players:[], picks:{}, lock:okHash(s.lock) ? s.lock : '', lr:num(s.lr, 0, 9e15), updatedAt:num(s.updatedAt, 0, 9e15)};
   // Mom's own choice of surprise for a week, saved as rows.
   const pk = s.picks;
   (Array.isArray(pk) ? pk : pk && typeof pk === 'object' ? Object.keys(pk).map(k => ({k, t:pk[k]})) : []).slice(-8).forEach(x => { if (x && typeof x === 'object' && isDay(x.k) && TREATS.includes(x.t)) st.picks[x.k] = x.t; });
   if (Array.isArray(s.players)){
     const seen = {};
-    s.players.slice(0, 6).forEach((a, i) => {
+    s.players.slice(0, 8).forEach((a, i) => {
       if (!a || typeof a !== 'object') return;
       const P = normPlayer(a, i); if (seen[P.id]) P.id = 'p' + (i + 1) + 'x';
       seen[P.id] = 1; st.players.push(P);
@@ -1503,13 +1865,15 @@ function okDelta(d){
   if (!d || typeof d !== 'object' || !(d.p == null || typeof d.p === 'string')) return false;
   if (d.t === 'reset' || d.t === 'remove') return true;
   if (d.t === 'name') return typeof d.name === 'string';
-  if (d.t === 'kind') return d.kind === 'little' || d.kind === 'big' || d.kind === 'auto';
+  if (d.t === 'kind') return d.kind === 'auto' || KINDS.indexOf(d.kind) >= 0;
   if (d.t === 'grade') return Number.isFinite(d.grade) && Number.isFinite(d.gy);
   if (d.t === 'add') return typeof d.id === 'string' && /^[a-z0-9]{1,16}$/.test(d.id) && typeof d.name === 'string';
   if (d.t === 'level') return !!BYID[d.game] && Number.isFinite(d.level);
   if (d.t === 'wpick') return isDay(d.k) && (d.treat === '' || TREATS.includes(d.treat));
   if (d.t === 'wdays') return Number.isFinite(d.n) && isDay(d.day);
   if (d.t === 'wcheck') return isDay(d.day);
+  if (d.t === 'pw') return d.h === '' || d.h === '-' || okHash(d.h);
+  if (d.t === 'lock') return d.h === '' || okHash(d.h);
   if (d.t === 'day') return isDay(d.day);
   if (d.t === 'wopen' || d.t === 'wgiven') return isDay(d.k);
   return d.t === 'round' && /^\d{4}-\d{2}-\d{2}$/.test(d.day) && Array.isArray(d.res) && d.res.every(r => Array.isArray(r) && !!BYID[r[0]] && (r[1] === '' || !!parseFact(String(r[1]))));
@@ -1547,13 +1911,16 @@ function rollGame(P, id){
 function apply(st, d){
   const P = st.players.find(x => x.id === (d.p || 'p1'));
   if (d.t === 'add'){
-    if (st.players.length < 6 && !st.players.some(x => x.id === d.id)) st.players.push(placeFresh(newPlayer(d.id, String(d.name).trim().slice(0, 20) || 'New player', d.kind, d.grade, d.gy)));
+    if (st.players.length < 8 && !st.players.some(x => x.id === d.id)) st.players.push(placeFresh(newPlayer(d.id, String(d.name).trim().slice(0, 20) || 'New player', d.kind, d.grade, d.gy)));
   } else if (d.t === 'wpick'){
     // Mom's choice of surprise for one week. Once a child has earned that week's surprise it stays as it is.
     if (!st.players.some(x => x.wk.wins.some(w => w.k === d.k))){
       if (TREATS.includes(d.treat)) st.picks[d.k] = d.treat; else delete st.picks[d.k];
       const ks = Object.keys(st.picks).sort(); while (ks.length > 8) delete st.picks[ks.shift()];
     }
+  } else if (d.t === 'lock'){
+    // The grown-up code: set, changed or (empty) switched off. Each child's own code stays as it is.
+    st.lock = d.h; if (d.r) st.lr = Math.max(st.lr || 0, num(d.r, 0, 9e15));
   } else if (!P){
     // That player was removed on another device, so there is nothing to change.
   } else if (d.t === 'round'){
@@ -1603,15 +1970,17 @@ function apply(st, d){
   } else if (d.t === 'level'){
     const G = P.games[d.game]; if (G){ G.level = clamp(Math.round(d.level), 1, maxLevel(d.game)); G.run = 0; G.weak = 0; G.s = 0; G.wd = 0; G.dn = G.dc = G.df = 0; }
   } else if (d.t === 'kind'){
-    P.kind = d.kind === 'little' || d.kind === 'big' ? d.kind : 'auto';
+    P.kind = KINDS.indexOf(d.kind) >= 0 ? d.kind : 'auto';
   } else if (d.t === 'grade'){
     P.grade = clamp(Math.round(d.grade), -3, 8); P.gy = num(d.gy, 2020, 2100); placeFresh(P);
   } else if (d.t === 'reset'){
-    const n = P.wk.n; Object.assign(P, newPlayer(P.id, P.name, P.kind, P.grade, P.gy)); P.wk.n = n; placeFresh(P);
+    const n = P.wk.n, pw = P.pw; Object.assign(P, newPlayer(P.id, P.name, P.kind, P.grade, P.gy)); P.wk.n = n; P.pw = pw; placeFresh(P);
   } else if (d.t === 'remove'){
     if (st.players.length > 1) st.players = st.players.filter(x => x !== P);
   } else if (d.t === 'wdays'){
     P.wk.n = clamp(Math.round(d.n), 3, 7); checkWin(st, P, d.day);
+  } else if (d.t === 'pw'){
+    P.pw = d.h;
   } else if (d.t === 'day'){
     // A new day has started: every game played on an earlier day takes its step.
     Object.keys(P.games).forEach(id => { const G = P.games[id]; if (G.dd && G.dd < d.day) rollGame(P, id); });
@@ -1625,7 +1994,7 @@ function apply(st, d){
 }
 // The saved copy lists facts and days as rows, so no fact text is ever used as a field name.
 function pack(st){
-  return {v:2, updatedAt:st.updatedAt, picks:Object.keys(st.picks).sort().map(k => ({k, t:st.picks[k]})), players:st.players.map(P => {
+  return {v:2, updatedAt:st.updatedAt, lock:st.lock, lr:st.lr, picks:Object.keys(st.picks).sort().map(k => ({k, t:st.picks[k]})), players:st.players.map(P => {
     const o = clone(P);
     o.facts = Object.keys(P.facts).map(k => Object.assign({k}, P.facts[k]));
     o.days = Object.keys(P.days).sort().map(k => Object.assign({k}, P.days[k]));
@@ -1722,8 +2091,9 @@ async function initCloud(tries){
   } catch (e){ setCloud('off'); }
 }
 function refreshIdle(){
-  if (screen === 'home') renderHome();
-  else if (screen === 'mom' && !(document.activeElement && document.activeElement.id === 'nameInput')) renderMom();
+  if (screen === 'lock'){ if (lk && !codesOn() && lk.mode !== 'set1' && lk.mode !== 'set2') lockBack(); else drawLock(); }
+  else if (screen === 'home'){ if (openFor(me())) renderHome(); else lockTo('who'); }
+  else if (screen === 'mom'){ if (codesOn() && !momOK) goHome(); else if (!(document.activeElement && document.activeElement.id === 'nameInput')) renderMom(); }
 }
 
 /* ---------- sound and voice ---------- */
@@ -1763,28 +2133,31 @@ function hush(){ try { if (canSpeak) window.speechSynthesis.cancel(); } catch (e
 
 /* ---------- playing a round ---------- */
 let screen = 'home', round = null, cur = null, busy = false, token = 0, timers = [], lastGame = 'mix';
-function show(id){ ['home', 'game', 'done', 'gift', 'mom'].forEach(s => { $('#' + s).hidden = s !== id; }); screen = id; $('#' + id).scrollTop = 0; }
+function show(id){ ['home', 'game', 'done', 'gift', 'mom', 'lock'].forEach(s => { $('#' + s).hidden = s !== id; }); screen = id; $('#' + id).scrollTop = 0; }
 function later(fn, ms){ const my = token; timers.push(setTimeout(() => { if (my === token) fn(); }, ms)); }
 function stopTimers(){ timers.forEach(clearTimeout); timers = []; token++; }
 
 // A different lesson every day: two games lead today's mix, and the pair changes tomorrow.
 const LESSONS = {
   math:[['add', 'make'], ['sub', 'hop'], ['miss', 'story'], ['add', 'count'], ['sub', 'make'], ['hop', 'miss'], ['story', 'add']],
-  eng:[['esound', 'eread'], ['espell', 'esent'], ['eabc', 'eread'], ['esound', 'espell'], ['eread', 'esent']]
+  eng:[['esound', 'eread'], ['espell', 'esent'], ['eabc', 'eread'], ['esound', 'espell'], ['eread', 'esent']],
+  upper:[['utimes', 'udiv'], ['uplus', 'usense'], ['ufrac', 'uword'], ['ufind', 'utimes'], ['udiv', 'ufrac'], ['usense', 'ufind'], ['uword', 'uplus']]
 };
-function lessonOf(little, eng, n){
-  const list = (little ? (eng ? LITTLE_E : LITTLE) : eng ? ENG : BIG).map(G => G.id);
-  const lead = little ? [list[n % list.length]] : LESSONS[eng ? 'eng' : 'math'][n % LESSONS[eng ? 'eng' : 'math'].length];
+// set: 'little', 'big' or 'upper', the games the child plays.
+function lessonOf(set, eng, n){
+  const little = set === 'little', upper = set === 'upper' && !eng, pairs = LESSONS[eng ? 'eng' : upper ? 'upper' : 'math'];
+  const list = (little ? (eng ? LITTLE_E : LITTLE) : eng ? ENG : upper ? UPPER : BIG).map(G => G.id);
+  const lead = little ? [list[n % list.length]] : pairs[n % pairs.length];
   const rest = list.filter(x => lead.indexOf(x) < 0), k = n % rest.length;
   return {lead, rest:rest.slice(k).concat(rest.slice(0, k))};
 }
 // The mix: three questions from each lead game, the others take turns in the remaining places.
-function mixPlan(little, eng, n){
-  const L = lessonOf(little, eng, n), lead = L.lead.reduce((a, g) => a.concat([g, g, g]), []);
-  return shuffle(lead.concat(little ? (eng ? [L.rest[0], L.rest[0]] : L.rest.slice(0, 3)) : L.rest.slice(0, eng ? 2 : 4)));
+function mixPlan(set, eng, n){
+  const little = set === 'little', L = lessonOf(set, eng, n), lead = L.lead.reduce((a, g) => a.concat([g, g, g]), []);
+  return shuffle(lead.concat(little ? (eng ? [L.rest[0], L.rest[0]] : L.rest.slice(0, 3)) : L.rest.slice(0, eng || set === 'upper' ? 2 : 4)));
 }
-function lessonLine(little, eng){
-  return 'Today’s lesson: ' + lessonOf(little, eng, dayNum(dayKey())).lead.map(id => '<b>' + esc(BYID[id].name) + '</b>').join(' and ') + '. A new one comes tomorrow.';
+function lessonLine(set, eng){
+  return 'Today’s lesson: ' + lessonOf(set, eng, dayNum(dayKey())).lead.map(id => '<b>' + esc(BYID[id].name) + '</b>').join(' and ') + '. A new one comes tomorrow.';
 }
 function weakFacts(P){
   return Object.keys(P.facts).filter(k => { const F = P.facts[k]; return F.l === 0 || (F.s >= 2 && F.m / F.s > 0.34); })
@@ -1792,9 +2165,10 @@ function weakFacts(P){
 }
 function buildRound(game){
   const P = me(), mix = game === 'mix' || game === 'emix', eng = game === 'emix' || !!(BYID[game] && ENG.concat(LITTLE_E).indexOf(BYID[game]) >= 0), little = mix ? kindOf(P) === 'little' : isLittle(game);
-  const plan = mix ? mixPlan(little, eng, dayNum(dayKey())) : Array(little ? 5 : 8).fill(game);
+  const upper = mix ? !eng && kindOf(P) === 'upper' : isUpper(game);
+  const plan = mix ? mixPlan(little ? 'little' : upper ? 'upper' : 'big', eng, dayNum(dayKey())) : Array(little ? 5 : 8).fill(game);
   const N = plan.length, review = {};
-  if (!little && !eng){
+  if (!little && !eng && !upper){
     // A missed fact comes back only where it still fits the level that game is set to.
     const weak = weakFacts(P);
     let wi = 0;
@@ -1841,6 +2215,7 @@ function buildRound(game){
   return qs;
 }
 function startRound(game){
+  if (!openFor(me())){ lockTo('who'); return; } // secret codes: this child's games are closed again
   lastGame = game;
   round = {game, p:me().id, qs:buildRound(game), i:0, res:[]};
   show('game'); showQuestion();
@@ -2014,14 +2389,14 @@ function showDone(stars, first, N, before, after, game){
   $('#giftGo').hidden = !wait; $('#againBtn').className = wait ? 'plain' : 'big';
   show('done'); sfx('win');
 }
-function goHome(){ renderHome(); show('home'); pullSoon(); }
+function goHome(){ if (!openFor(me())){ lockTo('who'); return; } renderHome(); show('home'); pullSoon(); }
 
 /* ---------- players ---------- */
 const initial = n => (Array.from(String(n).trim())[0] || '?').toUpperCase();
-function chips(withAdd){
-  const cur = me();
+function chips(withAdd, none){
+  const cur = none ? null : me();
   return state.players.map((P, i) => '<button type="button" class="chip' + (P === cur ? ' on' : '') + '" data-p="' + P.id + '" aria-pressed="' + (P === cur ? 'true' : 'false') + '"><span class="av" style="background:' + TINTS[i % 4] + '">' + esc(initial(P.name)) + '</span><span class="nm">' + esc(P.name) + '</span></button>').join('') +
-    (withAdd && state.players.length < 6 ? '<button type="button" class="chip add" data-add="1">+ Add a player</button>' : '');
+    (withAdd && state.players.length < 8 ? '<button type="button" class="chip add" data-add="1">+ Add a player</button>' : '');
 }
 function pickPlayer(id){ if (byId(id)){ prefs.player = id; persist(); } }
 
@@ -2069,11 +2444,119 @@ function settleDay(P){
   dayDone[id] = 1; commit({t:'day', p:P.id, day:today});
 }
 
+/* ---------- secret codes ---------- */
+// Each child's own 4 numbers, and one grown-up code for Mom's corner. A code is never kept as typed, only scrambled.
+// This is a family lock, not a bank lock: it keeps brothers and sisters out of each other's games.
+const scramble = (who, code) => hash36('sidewalk:' + who + ':' + code);
+let unlocked = '', momOK = false, lk = null, hiddenAt = 0;
+const wrongs = {}, cooling = {};
+const codesOn = () => !!state.lock;
+const needsCode = P => codesOn() && kindOf(P) !== 'little' && P.pw !== '-';
+const openFor = P => !needsCode(P) || unlocked === P.id;
+// Too easy to guess: four of the same, or a straight run like 1234 or 9876.
+const easyCode = c => /^(\d)\1{3}$/.test(c) || '0123456789'.indexOf(c) >= 0 || '9876543210'.indexOf(c) >= 0;
+// who: a player's id, or '*' for the grown-up code. No two may share a code.
+const takenCode = (c, who) => (who !== '*' && state.lock === scramble('*', c)) || state.players.some(X => X.id !== who && X.pw === scramble(X.id, c));
+const LOCK_TEXT = {
+  who:['Who is playing?', 'Tap your name.'],
+  enter:['Hi, %!', 'Type your secret code.'],
+  make1:['Hi, %!', 'Make your own secret code: 4 numbers that only you know.'],
+  make2:['One more time', 'Type the same 4 numbers again.'],
+  mom:['For grown-ups', 'Type the grown-up code.'],
+  forgot:['A new grown-up code', 'First answer this: '],
+  set1:['Grown-up code', 'Pick 4 numbers for Mom’s corner. Keep them from the children.'],
+  set2:['One more time', 'Type the same 4 numbers again.']
+};
+function lockTo(mode, pid){
+  lk = {mode, p:pid || '', buf:'', first:'', msg:'', a:rnd(32, 99), b:rnd(32, 99), reset:false};
+  drawLock(); show('lock');
+}
+function drawLock(){
+  if (!lk) return;
+  const P = byId(lk.p);
+  if (!P && (lk.mode === 'enter' || lk.mode === 'make1' || lk.mode === 'make2')){ lk.mode = 'who'; lk.buf = ''; }
+  // The child's code was cleared, or made, on another device while this screen was open.
+  if (P && lk.mode === 'enter' && !okHash(P.pw)){ lk.mode = P.pw === '-' ? 'who' : 'make1'; lk.buf = ''; }
+  else if (P && (lk.mode === 'make1' || lk.mode === 'make2') && P.pw){ lk.mode = P.pw === '-' ? 'who' : 'enter'; lk.buf = ''; lk.first = ''; }
+  const m = lk.mode, T = LOCK_TEXT[m], who = m === 'who', cold = (m === 'enter' || m === 'mom') && !!cooling[m === 'enter' ? lk.p : '*'];
+  $('#lockTitle').textContent = T[0].replace('%', () => (P ? P.name : ''));
+  $('#lockLine').textContent = m === 'forgot' ? T[1] + lk.a + ' × ' + lk.b + ' = ?' : T[1];
+  $('#lockMsg').textContent = cold ? 'Too many tries. Wait a little, then try again.' : lk.msg;
+  $('#lockMsg').hidden = who;
+  $('#lockWho').hidden = !who; if (who) $('#lockWho').innerHTML = chips(false, true);
+  const dots = $('#lockDots'); dots.hidden = who;
+  dots.innerHTML = m === 'forgot' ? esc(lk.buf) : [0, 1, 2, 3].map(i => '<i' + (i < lk.buf.length ? ' class="on"' : '') + '></i>').join('');
+  dots.setAttribute('aria-label', lk.buf.length + ' of 4 numbers typed');
+  $('#lockPad').hidden = who; $$('#lockPad button').forEach(b => { b.disabled = cold; });
+  $('#lockMom').hidden = !who; $('#lockForgot').hidden = m !== 'mom'; $('#lockBack').hidden = who;
+}
+function lockKey(k){
+  if (!lk || lk.mode === 'who') return;
+  if ((lk.mode === 'enter' || lk.mode === 'mom') && cooling[lk.mode === 'enter' ? lk.p : '*']) return;
+  if (k === 'del'){ lk.buf = lk.buf.slice(0, -1); lk.msg = ''; drawLock(); return; }
+  if (lk.buf.length >= 4) return;
+  lk.buf += k; lk.msg = ''; sfx('tick'); drawLock();
+  if (lk.buf.length === 4){ const my = lk; setTimeout(() => { if (lk === my && my.buf.length === 4) lockDone(); }, 180); }
+}
+function lockFail(msg){
+  lk.buf = ''; lk.msg = msg; sfx('no'); drawLock();
+  const el = $('#lock'); el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake');
+}
+function lockDone(){
+  const m = lk.mode, c = lk.buf, P = byId(lk.p);
+  if (m === 'enter' || m === 'mom'){
+    const key = m === 'enter' ? lk.p : '*';
+    if (m === 'enter' ? !!P && P.pw === scramble(P.id, c) : state.lock === scramble('*', c)){
+      wrongs[key] = 0;
+      if (m === 'enter') letIn(P); else { momOK = true; lk = null; openMom(); sfx('ok'); }
+      return;
+    }
+    wrongs[key] = (wrongs[key] || 0) + 1;
+    if (wrongs[key] % 3 === 0){
+      // three wrong tries: the pad rests for half a minute
+      cooling[key] = 1;
+      setTimeout(() => { cooling[key] = 0; if (lk && screen === 'lock'){ lk.msg = ''; drawLock(); } }, 30000);
+    }
+    return lockFail('Not that one. Try again.');
+  }
+  if (m === 'forgot'){
+    // A sum the little ones cannot do. For the big ones, Mom's corner shows when the code was made new this way.
+    if (+c === lk.a * lk.b){ lk.mode = 'set1'; lk.reset = true; lk.buf = ''; lk.msg = ''; return drawLock(); }
+    lk.a = rnd(32, 99); lk.b = rnd(32, 99); return lockFail('Not that one. Here is another.');
+  }
+  if (m === 'make1' || m === 'set1'){
+    if (easyCode(c) || takenCode(c, m === 'make1' ? lk.p : '*')) return lockFail('Pick a different one. That code is too easy, or it is taken.');
+    lk.first = c; lk.buf = ''; lk.mode = m === 'make1' ? 'make2' : 'set2'; return drawLock();
+  }
+  if (c !== lk.first){ lk.mode = m === 'make2' ? 'make1' : 'set1'; lk.first = ''; return lockFail('Those two did not match. Start again.'); }
+  if (m === 'make2'){ if (!P) return lockBack(); commit({t:'pw', p:P.id, h:scramble(P.id, c)}); letIn(P); }
+  else { const d = {t:'lock', h:scramble('*', c)}; if (lk.reset) d.r = Date.now(); commit(d); momOK = true; lk = null; openMom(); sfx('ok'); }
+}
+function letIn(P){ unlocked = P.id; pickPlayer(P.id); lk = null; goHome(); sfx('ok'); }
+// A tap on a name: straight in for a little one, the number pad for everyone else.
+function enterAs(pid){
+  const P = byId(pid); if (!P) return;
+  if (!needsCode(P)){ unlocked = ''; pickPlayer(pid); lk = null; goHome(); }
+  else if (unlocked === pid){ pickPlayer(pid); lk = null; goHome(); }
+  else lockTo(P.pw ? 'enter' : 'make1', pid);
+}
+function askMom(){ if (codesOn() && !momOK) lockTo('mom'); else openMom(); }
+function lockBack(){
+  const fromMom = !!lk && (lk.mode === 'set1' || lk.mode === 'set2') && !lk.reset;
+  lk = null;
+  if (fromMom) openMom(); else goHome();
+}
+
 /* ---------- home ---------- */
 function renderHome(){
   settleDay(me());
   const P = me(), d = P.days[dayKey()], r = d ? d.r : 0;
   $('#who').innerHTML = chips(false);
+  if (needsCode(P)){
+    // With codes on, a child sees only their own name here. Switching goes through the name screen.
+    $$('#who .chip').forEach(b => { if (b.dataset.p !== P.id) b.remove(); });
+    $('#who').insertAdjacentHTML('beforeend', '<button type="button" class="chip add" data-switch="1">Switch player</button>');
+  }
   $('#hiName').textContent = P.name;
   $('#starCount').textContent = P.stars;
   $('#starBox').setAttribute('aria-label', P.stars + ' stars earned');
@@ -2092,12 +2575,14 @@ function renderHome(){
     return '<button type="button" class="box" data-game="' + id + '"><span class="num" style="color:var(--' + G.col + ')">' + G.n + '</span><span class="gname">' + G.name + '</span><span class="gsub">' + G.sub + '</span><span class="lv" id="lv-' + id + '">' + pips + ' Level ' + lv + '</span></button>';
   };
   const pair = (a, b) => '<div class="pair">' + box(a) + box(b) + '</div>';
-  const eng = prefs.subj === 'eng', lit = kindOf(P) === 'little';
+  const kind = kindOf(P), lit = kind === 'little', hasEng = engOf(P).length > 0, eng = hasEng && prefs.subj === 'eng';
+  $('#subj').hidden = !hasEng;
   $$('#subj .tab').forEach(b => { const on = (b.dataset.subj === 'eng') === eng; b.classList.toggle('on', on); b.setAttribute('aria-pressed', on ? 'true' : 'false'); });
   $('#mixText').textContent = eng ? 'Play today’s English mix' : 'Play today’s math mix';
-  $('#lessonNote').innerHTML = lessonLine(lit, eng);
+  $('#lessonNote').innerHTML = lessonLine(eng && !lit ? 'big' : kind, eng);
   $('#court').innerHTML = (eng ? (lit ? pair('lword', 'labc') : box('eabc') + pair('esound', 'eread') + pair('espell', 'esent'))
-    : lit ? box('ltap') + pair('lmany', 'lmore') + pair('lshape', 'lsize') : box('count') + pair('add', 'sub') + box('make') + pair('hop', 'miss') + box('story')) +
+    : lit ? box('ltap') + pair('lmany', 'lmore') + pair('lshape', 'lsize')
+    : kind === 'upper' ? box('uplus') + pair('utimes', 'udiv') + box('ufrac') + pair('usense', 'ufind') + box('uword') : box('count') + pair('add', 'sub') + box('make') + pair('hop', 'miss') + box('story')) +
     '<button type="button" class="dome" id="momBtn"><b>For Mom</b><span>See how it is going</span></button>';
   // This week's boxes, and the gift at the end of them.
   settleWeek(P);
@@ -2130,7 +2615,8 @@ function streak(P){
 }
 function renderMom(){
   settleDay(me());
-  const P = me(), nm = esc(P.name), little = kindOf(P) === 'little', list = gamesOf(P), stage = stageOf(P), aim = stage + 1, t = new Date(), days = [];
+  const P = me(), nm = esc(P.name), kind = kindOf(P), little = kind === 'little', upper = kind === 'upper', list = gamesOf(P), engList = engOf(P), stage = stageOf(P), aim = stage + 1, t = new Date(), days = [];
+  const topG = little ? -1 : upper ? 7 : 2; // the hardest work in this set of games
   for (let i = 6; i >= 0; i--){
     const dt = new Date(t.getFullYear(), t.getMonth(), t.getDate() - i), v = P.days[dayKey(dt)] || {r:0, q:0, f:0, s:0};
     days.push({w:'SMTWTFS'[dt.getDay()], r:v.r, q:v.q, f:v.f, s:v.s, today:i === 0});
@@ -2141,8 +2627,9 @@ function renderMom(){
     : !wq ? nm + ' has not played in the last 7 days.'
     : nm + ' played on ' + playedDays + ' of the last 7 days and got ' + Math.round(100 * wf / wq) + '% right on the first try.';
   let h = '<div class="who" id="who2" role="group" aria-label="Whose progress">' + chips(true) + '</div><p class="lead">' + lead + '</p>' +
-    '<p class="aim">' + nm + ' is ' + (stage >= -1 ? 'in ' : '') + '<b>' + gradeName(stage) + '</b>. The games aim one year ahead: <b>' + workName(Math.min(aim, little ? -1 : TOP_GRADE)) + '</b>.' +
-    (!little && aim > TOP_GRADE ? ' Grade ' + TOP_GRADE + ' is the hardest work in the app so far.' : '') + '</p>';
+    '<p class="aim">' + nm + ' is ' + (stage >= -1 ? 'in ' : '') + '<b>' + gradeName(stage) + '</b>. The games aim one year ahead: <b>' + workName(Math.min(aim, topG)) + '</b>.' +
+    (upper && aim > topG ? ' Grade 7 is the hardest work in the app so far.' : !little && !upper && aim > topG ? ' Grade 2 is the top of these games.' + (P.kind === 'big' ? '' : ' When most of them reach Level 6, the older kids’ games (Grade 3 work) open by themselves.') : '') +
+    (!engList.length ? ' The English games stop at Grade 2 work, so ' + nm + ' has number games only for now.' : '') + '</p>';
 
   // This week's task, Mom's choices for it, and the surprises still to give.
   const W = weekNow(P), monKey = keyOfNum(W.mon), lastMon = keyOfNum(W.mon - 7), auto = autoTreat(W.mon), owe = [];
@@ -2164,7 +2651,7 @@ function renderMom(){
     '<p class="key"><span class="k"><span class="wc full mini"></span>' + GOAL + ' rounds or more</span><span class="k"><span class="wc some mini"></span>played a little</span><span>The number is rounds finished.</span></p>' +
     '<dl class="trio"><div><dt>Rounds this week</dt><dd>' + sum('r') + '</dd></div><div><dt>Stars this week</dt><dd>' + sum('s') + '</dd></div><div><dt>Days in a row</dt><dd>' + streak(P) + '</dd></div></dl></section>';
 
-  h += '<section><h2>How each game is going</h2><p class="hint">The bar shows answers right on the first try, over the last 40 questions.</p>' + [['Math', list], ['English', engOf(P)]].map(grp => '<h3 class="subh">' + grp[0] + '</h3>' + grp[1].map(G => {
+  h += '<section><h2>How each game is going</h2><p class="hint">The bar shows answers right on the first try, over the last 40 questions.</p>' + [['Math', list], ['English', engList]].filter(grp => grp[1].length).map(grp => '<h3 class="subh">' + grp[0] + '</h3>' + grp[1].map(G => {
     const g = P.games[G.id], n = g.h.length, p = n ? Math.round(100 * (g.h.split('1').length - 1) / n) : 0, top = maxLevel(G.id), goal = goalLevel(G.id, aim);
     const st = !n ? ['none', 'Not played yet'] : n < 8 ? ['none', 'Just started'] : p >= 85 ? ['good', 'Strong'] : p >= 60 ? ['mid', 'Getting there'] : ['low', 'Needs practice'];
     return '<div class="grow"><div class="ghead"><span class="gnum">' + G.n + '</span><b>' + esc(G.name) + '</b><span class="pill ' + st[0] + '">' + st[1] + '</span></div>' +
@@ -2177,11 +2664,18 @@ function renderMom(){
   }).join('')).join('') + '<p class="hint">Each game starts at the level for ' + nm + '’s grade. The lesson changes every day. After a good day, the next day brings one more question from the next level, up to 3 in a round. After a very good day the game moves up a level, and after two hard days it moves down. A perfect round also moves a game up right away until it reaches the goal. After that it takes two strong rounds. Two weak rounds in a row move it down one level, so the practice fits. Use the buttons to change a level yourself.</p></section>';
 
   const weak = weakFacts(P).slice(0, 8);
-  h += '<section><h2>Practice these together</h2>' + (weak.length
+  if (!upper || weak.length) h += '<section><h2>Practice these together</h2>' + (weak.length
     ? '<ul class="chips">' + weak.map(k => '<li>' + esc(factLabel(k)) + '</li>').join('') + '</ul><p class="hint">' + nm + ' missed these on the first try. Try them with coins, grapes or fingers.' + (little ? '' : ' They also come back more often in the games.') + '</p>'
     : '<p class="hint">Nothing tricky yet. ' + (little ? 'Numbers' : 'Facts') + ' that ' + nm + ' misses will show up here.</p>') + '</section>';
 
-  h += '<section><h2>How to help</h2><ul class="tips">' + (little
+  h += '<section><h2>How to help</h2><ul class="tips">' + (upper
+    ? '<li>Keep paper and a pencil next to the screen. Most of these need working out.</li>' +
+      '<li>After a wrong answer, ask to see the working. The slip is usually in one step.</li>' +
+      '<li>Times tables come first. When they are slow, everything after them is slow. Level 1 of Times is the place to practise.</li>' +
+      '<li>' + GOAL + ' rounds take about 20 minutes. A little every day works better than a lot once a week.</li>' +
+      '<li>A question marked Challenge comes from the next level. Missing it costs nothing.</li>' +
+      '<li>Praise the trying, not the speed.</li>'
+    : little
     ? '<li>Sit together and read each question out loud. Let ' + nm + ' do the tapping.</li>' +
       '<li>Count out loud together on every tap: one, two, three.</li>' +
       '<li>Name what you see: &ldquo;That is a star. This one is big.&rdquo;</li>' +
@@ -2195,16 +2689,33 @@ function renderMom(){
       '<li>In the English games, say each word out loud and stretch it: c-a-t. The speaker button reads the question.</li>' +
       '<li>Praise the trying, not the speed.</li>') + '</ul></section>';
 
-  const grades = [[-3, 'Age 2'], [-2, 'Age 3'], [-1, 'Pre-K (age 4)'], [0, 'Kindergarten'], [1, 'Grade 1'], [2, 'Grade 2'], [3, 'Grade 3'], [4, 'Grade 4'], [5, 'Grade 5']];
-  const kinds = [['auto', 'Automatic for the grade'], ['little', 'Little ones (counting, shapes, first words)'], ['big', 'Big kids (adding, taking away, reading)']];
+  const grades = [[-3, 'Age 2'], [-2, 'Age 3'], [-1, 'Pre-K (age 4)'], [0, 'Kindergarten'], [1, 'Grade 1'], [2, 'Grade 2'], [3, 'Grade 3'], [4, 'Grade 4'], [5, 'Grade 5'], [6, 'Grade 6'], [7, 'Grade 7'], [8, 'Grade 8']];
+  const kinds = [['auto', 'Automatic for the grade'], ['little', 'Little ones (counting, shapes, first words)'], ['big', 'Big kids (adding, taking away, reading)'], ['upper', 'Older kids (times, fractions, equations)']];
+  // Secret codes: this child's own row here, and the switch for the whole family further down.
+  const codeRow = !codesOn() ? '' : little ? '<p class="hint">Secret codes: little ones open without one.</p>'
+    : '<label class="check" for="pwChk"><input id="pwChk" type="checkbox"' + (P.pw !== '-' ? ' checked' : '') + '>Ask ' + nm + ' for a secret code</label>' +
+      (okHash(P.pw) ? '<div class="btnrow"><button type="button" id="pwClear" class="plain">Clear ' + nm + '’s code</button></div><p class="hint">Forgotten? Clear it, and ' + nm + ' makes a new one at the next tap on the name.</p>'
+        : P.pw === '-' ? '' : '<p class="hint">' + nm + ' has no code yet and makes one at the next tap on the name.</p>');
   h += '<section><h2>This player</h2>' +
     '<label class="field" for="nameInput">Name<input id="nameInput" type="text" maxlength="20" autocomplete="off" value="' + nm + '"></label>' +
-    '<label class="field" for="gradeSel">Grade this school year<select id="gradeSel">' + grades.map(g => '<option value="' + g[0] + '"' + (g[0] === clamp(stage, -3, 5) ? ' selected' : '') + '>' + g[1] + '</option>').join('') + '</select></label>' +
+    '<label class="field" for="gradeSel">Grade this school year<select id="gradeSel">' + grades.map(g => '<option value="' + g[0] + '"' + (g[0] === stage ? ' selected' : '') + '>' + g[1] + '</option>').join('') + '</select></label>' +
     '<p class="hint">The grade moves up by itself every September, and the goals move with it.</p>' +
     '<label class="field" for="kindSel">Games<select id="kindSel">' + kinds.map(k => '<option value="' + k[0] + '"' + (k[0] === P.kind ? ' selected' : '') + '>' + k[1] + '</option>').join('') + '</select></label>' +
+    codeRow +
     '<div class="btnrow"><button type="button" id="resetBtn" class="plain">Start ' + nm + ' over</button>' + (state.players.length > 1 ? '<button type="button" id="removeBtn" class="plain">Remove ' + nm + '</button>' : '') + '</div>' +
     '<div id="resetAsk" class="resetAsk" hidden><span>Erase all of ' + nm + '’s stars and progress?</span><button type="button" id="resetYes" class="danger">Erase</button><button type="button" id="resetNo" class="plain">Keep</button></div>' +
     '<div id="removeAsk" class="resetAsk" hidden><span>Remove ' + nm + ' and all of their progress?</span><button type="button" id="removeYes" class="danger">Remove</button><button type="button" id="removeNo" class="plain">Keep</button></div></section>';
+
+  const madeNew = state.lr && Date.now() - state.lr < 30 * 864e5 ? new Date(state.lr) : null;
+  h += '<section id="codesSec"><h2>Secret codes</h2>' + (codesOn()
+    ? '<p class="lead">Secret codes are <b>on</b>. Each child opens only their own games.</p>' +
+      '<ul class="codes">' + state.players.map(X => '<li><b>' + esc(X.name) + '</b>: ' + (kindOf(X) === 'little' ? 'opens without a code (little one)' : X.pw === '-' ? 'opens without a code' : okHash(X.pw) ? 'has a code' : 'no code yet, makes one at the next tap') + '</li>').join('') + '</ul>' +
+      (madeNew ? '<p class="hint warn">The grown-up code was made new with “I forgot” on ' + MONTHS[madeNew.getMonth()] + ' ' + madeNew.getDate() + '. If that was not you, change it now.</p>' : '') +
+      '<div class="btnrow"><button type="button" id="codesChange" class="plain">Change the grown-up code</button><button type="button" id="codesOff" class="plain">Turn off secret codes</button></div>' +
+      '<div id="codesAsk" class="resetAsk" hidden><span>Turn off every code? Anyone can then open any player.</span><button type="button" id="codesOffYes" class="danger">Turn off</button><button type="button" id="codesOffNo" class="plain">Keep</button></div>' +
+      '<p class="hint">A child forgot their code? Pick the name at the top of this page, then clear the code under This player. The codes keep brothers and sisters out of each other’s games. They are a family lock, not strong security.</p>'
+    : '<p class="hint">Give every child their own 4-number code, so each one opens only their own games. You pick a grown-up code for Mom’s corner first. Then each child makes their own code the first time they tap their name.</p>' +
+      '<div class="btnrow"><button type="button" id="codesOnBtn" class="plain">Turn on secret codes</button></div>') + '</section>';
 
   h += '<section><h2>This device</h2>' +
     '<label class="check" for="soundChk"><input id="soundChk" type="checkbox"' + (prefs.sound ? ' checked' : '') + '>Sounds</label>' +
@@ -2229,14 +2740,27 @@ function paint(){
   } catch (e){}
 }
 function wire(){
-  $('#who').addEventListener('click', e => { const b = e.target.closest('.chip'); if (b && b.dataset.p){ pickPlayer(b.dataset.p); renderHome(); sfx('tick'); } });
+  $('#who').addEventListener('click', e => {
+    const b = e.target.closest('.chip'); if (!b) return;
+    if (b.dataset.switch){ unlocked = ''; lockTo('who'); sfx('tick'); }
+    else if (b.dataset.p && codesOn() && b.dataset.p !== me().id){ sfx('tick'); enterAs(b.dataset.p); }
+    else if (b.dataset.p){ pickPlayer(b.dataset.p); renderHome(); sfx('tick'); }
+  });
+  // secret codes: the number pad, the name screen, and the way into Mom's corner
+  $('#lockPad').innerHTML = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', 'del'].map(k => (k === '' ? '<span></span>' : '<button type="button" data-k="' + k + '"' + (k === 'del' ? ' class="soft" aria-label="Delete the last number">Delete' : '>' + k) + '</button>')).join('');
+  $('#lockPad').addEventListener('click', e => { const b = e.target.closest('button'); if (b && !b.disabled) lockKey(b.dataset.k); });
+  $('#lockWho').addEventListener('click', e => { const b = e.target.closest('.chip'); if (b && b.dataset.p){ sfx('tick'); enterAs(b.dataset.p); } });
+  $('#lockMom').addEventListener('click', () => { lockTo('mom'); });
+  $('#lockForgot').addEventListener('click', () => { lockTo('forgot'); });
+  $('#lockBack').addEventListener('click', lockBack);
+  document.addEventListener('keydown', e => { if (screen !== 'lock' || !lk) return; if (/^\d$/.test(e.key)) lockKey(e.key); else if (e.key === 'Backspace') lockKey('del'); });
   $('#court').addEventListener('click', e => {
     const b = e.target.closest('button'); if (!b) return;
-    if (b.id === 'momBtn') openMom(); else if (b.dataset.game) startRound(b.dataset.game);
+    if (b.id === 'momBtn') askMom(); else if (b.dataset.game) startRound(b.dataset.game);
   });
-  $('#mixBtn').addEventListener('click', () => { startRound(prefs.subj === 'eng' ? 'emix' : 'mix'); });
+  $('#mixBtn').addEventListener('click', () => { startRound(prefs.subj === 'eng' && engOf(me()).length ? 'emix' : 'mix'); });
   $('#subj').addEventListener('click', e => { const b = e.target.closest('.tab'); if (b){ prefs.subj = b.dataset.subj === 'eng' ? 'eng' : 'math'; persist(); renderHome(); sfx('tick'); } });
-  $('#momTop').addEventListener('click', openMom);
+  $('#momTop').addEventListener('click', askMom);
   $('#soundBtn').addEventListener('click', () => { prefs.sound = !prefs.sound; persist(); renderHome(); sfx('ok'); });
   $('#quitBtn').addEventListener('click', quit);
   $('#sayBtn').addEventListener('click', () => { if (cur) say(cur.say); });
@@ -2245,7 +2769,7 @@ function wire(){
   $('#note').addEventListener('click', e => { if (e.target.closest('#helpBtn')) onHelp(); });
   $('#againBtn').addEventListener('click', () => { startRound(lastGame); });
   $('#homeBtn').addEventListener('click', goHome);
-  $('#momBack').addEventListener('click', goHome);
+  $('#momBack').addEventListener('click', () => { momOK = false; goHome(); });
   $('#giftBtn').addEventListener('click', () => {
     const P = me(), W = weekNow(P), win = W.win || waiting(P, W);
     if (win) openGift(P, win);
@@ -2275,6 +2799,11 @@ function wire(){
     else if (b.id === 'resetNo' || b.id === 'removeNo'){ $('#resetAsk').hidden = true; $('#removeAsk').hidden = true; }
     else if (b.id === 'resetYes'){ commit({t:'reset', p:P.id}); renderMom(); $('#mom').scrollTop = 0; }
     else if (b.id === 'removeYes'){ commit({t:'remove', p:P.id}); pickPlayer(state.players[0].id); renderMom(); $('#mom').scrollTop = 0; }
+    else if (b.id === 'codesOnBtn' || b.id === 'codesChange') lockTo('set1');
+    else if (b.id === 'codesOff') $('#codesAsk').hidden = false;
+    else if (b.id === 'codesOffNo') $('#codesAsk').hidden = true;
+    else if (b.id === 'codesOffYes'){ commit({t:'lock', h:''}); momOK = false; unlocked = ''; renderMom(); }
+    else if (b.id === 'pwClear'){ commit({t:'pw', p:P.id, h:''}); if (unlocked === P.id) unlocked = ''; renderMom(); }
     else if (b.dataset.given){ commit({t:'wgiven', p:b.dataset.pid, k:b.dataset.given, g:b.dataset.undo ? 0 : 1}); renderMom(); }
   });
   $('#momBody').addEventListener('change', e => {
@@ -2286,11 +2815,20 @@ function wire(){
     else if (t.id === 'kindSel'){ commit({t:'kind', p:P.id, kind:t.value}); renderMom(); }
     else if (t.id === 'wkDays'){ commit({t:'wdays', p:P.id, n:+t.value, day:dayKey()}); renderMom(); }
     else if (t.id === 'wkTreat'){ commit({t:'wpick', k:keyOfNum(mondayOf(dayKey())), treat:t.value}); renderMom(); }
+    else if (t.id === 'pwChk'){ commit({t:'pw', p:P.id, h:t.checked ? '' : '-'}); if (unlocked === P.id) unlocked = ''; renderMom(); }
     else if (t.id === 'soundChk'){ prefs.sound = t.checked; persist(); sfx('ok'); }
     else if (t.id === 'readChk'){ prefs.read = t.checked; persist(); if (t.checked) say('I will read each question to you.'); }
   });
   // Coming back to the page (maybe on a new day) redraws today's hops and the week's boxes.
-  document.addEventListener('visibilitychange', () => { if (document.hidden) return; if (screen === 'home') renderHome(); if (screen === 'home' || screen === 'mom') pullSoon(); });
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden){ hiddenAt = Date.now(); return; }
+    // Left alone for a minute with codes on: the names screen comes back.
+    if (codesOn() && hiddenAt && Date.now() - hiddenAt > 60000){
+      unlocked = ''; momOK = false;
+      if (screen !== 'game' && screen !== 'lock'){ goHome(); return; } // a round in play may be finished first
+    }
+    if (screen === 'home') renderHome(); if (screen === 'home' || screen === 'mom') pullSoon();
+  });
 }
 
 function start(hot){
@@ -2315,7 +2853,7 @@ function start(hot){
   // First open from a personal link: take the players' names and grades from it. Ignored once anyone has played.
   if (STANDALONE && state.updatedAt === 0){
     const m = /[#&]kids=([^&]+)/.exec(location.hash || '');
-    const list = (m ? m[1].split(',') : []).slice(0, 6).map(part => {
+    const list = (m ? m[1].split(',') : []).slice(0, 8).map(part => {
       let t = part; try { t = decodeURIComponent(part); } catch (e){}
       const i = t.lastIndexOf('.'), g = parseInt(t.slice(i + 1), 10), name = t.slice(0, Math.max(i, 0)).trim().slice(0, 20);
       return name && Number.isFinite(g) ? [name, clamp(g, -3, 8)] : null;
@@ -2325,7 +2863,9 @@ function start(hot){
   $('#starIcon').setAttribute('d', STAR);
   $('#cheer').innerHTML = dotFace();
   if (!canSpeak){ $('#sayBtn').hidden = true; $('#saySpacer').hidden = false; prefs.read = false; }
-  paint(); renderHome(); wire(); initCloud(0);
+  paint(); renderHome(); wire();
+  if (!openFor(me())) lockTo('who'); // secret codes are on: start at the names
+  initCloud(0);
 }
 
 const hotApi = window.claude && window.claude.hot;
