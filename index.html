@@ -1858,6 +1858,12 @@ function normalize(s){
     const f = fresh();
     st.players.push(normPlayer(Object.assign({}, s, {id:'p1', kind:'auto', grade:NaN}), 0), f.players[1], f.players[2]);
   }
+  // Players left waiting in the saved copy (a name, a grade and nothing else): they join the others on this load,
+  // and the next save writes them down as ordinary players.
+  if (Array.isArray(s.more)) s.more.slice(0, 8).forEach(a => {
+    if (!a || typeof a !== 'object' || st.players.length >= 8) return;
+    const P = normPlayer(a, st.players.length); if (!st.players.some(x => x.id === P.id)) st.players.push(P);
+  });
   if (!st.players.length) st.players = fresh().players;
   return st;
 }
